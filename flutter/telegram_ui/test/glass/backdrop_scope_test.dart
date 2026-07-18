@@ -288,6 +288,70 @@ void main() {
     });
   });
 
+  group('settings swap (didUpdateWidget)', () {
+    testWidgets(
+        'swapping settings migrates the listener: the old instance no longer '
+        'rebuilds (or crashes after dispose), the new one does',
+        (WidgetTester tester) async {
+      final GlassSettings a = _manualSettings();
+      final GlassSettings b = _manualSettings();
+      final List<GlassScopeData> log = <GlassScopeData>[];
+      Widget scope(GlassSettings settings) => _boilerplate(GlassBackdropScope(
+            settings: settings,
+            probeOnMount: false,
+            child: _ScopeReader(log: log),
+          ));
+
+      await tester.pumpWidget(scope(a));
+      expect(log.last.tier, GlassTier.frosted); // unprobed liquid degrades
+
+      await tester.pumpWidget(scope(b));
+      final int buildsAfterSwap = log.length;
+
+      // Notifying the OLD settings must not rebuild the scope — a
+      // wrong-instance removeListener in didUpdateWidget would leave a's
+      // listener attached.
+      a.applyCapability(const GlassCapability.supported());
+      await tester.pump();
+      expect(log.length, buildsAfterSwap);
+      expect(log.last.tier, GlassTier.frosted);
+
+      // The NEW settings' notification re-resolves the subtree.
+      b.applyCapability(const GlassCapability.supported());
+      await tester.pump();
+      expect(log.last.tier, GlassTier.liquid);
+
+      // After the scope is disposed, notifying either instance must be
+      // harmless (the dangling old listener produced setState-after-dispose
+      // on the next probe/kill-switch notification).
+      await tester.pumpWidget(const SizedBox());
+      a.forcedTier = GlassTier.flat;
+      b.forcedTier = GlassTier.flat;
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('swapping in unprobed settings re-kicks ensureProbed',
+        (WidgetTester tester) async {
+      final GlassSettings a = _manualSettings();
+      int probeRuns = 0;
+      final GlassSettings b = GlassSettings(probe: () async {
+        probeRuns++;
+        return const GlassCapability.supported();
+      });
+      Widget scope(GlassSettings settings) => _boilerplate(GlassBackdropScope(
+            settings: settings,
+            child: const SizedBox.shrink(),
+          ));
+
+      await tester.pumpWidget(scope(a));
+      expect(probeRuns, 0);
+      await tester.pumpWidget(scope(b));
+      await tester.pump();
+      expect(probeRuns, 1); // didUpdateWidget kicked the new instance.
+      expect(b.probed, isTrue);
+    });
+  });
+
   group('layer hygiene (ARCHITECTURE.md section 3.5)', () {
     Widget twoPanelScene(GlassSettings settings) => _boilerplate(
           GlassBackdropScope(

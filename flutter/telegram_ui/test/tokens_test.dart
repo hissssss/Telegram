@@ -6,7 +6,11 @@
 import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:telegram_ui/src/foundation/color_math.dart'
+    show kDarkThemeBrightnessThreshold;
 import 'package:telegram_ui/src/tokens/color_scheme.g.dart';
+import 'package:telegram_ui/src/tokens/glass_metrics.g.dart'
+    show kGlassDarkBrightnessThreshold;
 import 'package:telegram_ui/src/tokens/palettes/palettes.g.dart';
 import 'package:telegram_ui/src/tokens/theme_fallbacks.g.dart';
 import 'package:telegram_ui/src/tokens/theme_key_names.g.dart';
@@ -129,6 +133,20 @@ const List<(int, String, int)> kSpotChecks = <(int, String, int)>[
 ];
 
 void main() {
+  group('cross-layer drift gates', () {
+    test(
+        'hand-written kDarkThemeBrightnessThreshold equals the generated '
+        'kGlassDarkBrightnessThreshold', () {
+      // foundation/ is a deliberately import-free leaf layer, so
+      // color_math.dart hard-codes the 0.721 threshold of
+      // BlurredBackgroundColorProviderThemed.java:34-37 while the codegen
+      // pipeline extracts the same value into glass_metrics.g.dart. The
+      // generated token is the source of truth; a re-extraction that moves
+      // it must fail here until the hand-written copy follows.
+      expect(kDarkThemeBrightnessThreshold, kGlassDarkBrightnessThreshold);
+    });
+  });
+
   group('key ordinals', () {
     test('count matches Theme.java colorsCount (777)', () {
       expect(TelegramColorKey.colorsCount, 777);

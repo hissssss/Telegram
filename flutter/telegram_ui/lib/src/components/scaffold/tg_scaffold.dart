@@ -122,9 +122,9 @@ class TgScaffold extends StatelessWidget {
     this.tabBar,
     this.backgroundColor,
     this.extendBodyBehindBars = true,
-    this.glassTier,
-    this.glassStrategy,
-    this.glassSettings,
+    this.tier,
+    this.strategy,
+    this.settings,
     this.probeOnMount = true,
     this.resources,
   });
@@ -151,15 +151,17 @@ class TgScaffold extends StatelessWidget {
   final bool extendBodyBehindBars;
 
   /// Requested [GlassTier] forwarded to the installed [GlassBackdropScope];
-  /// null inherits/defaults per [GlassBackdropScope.tier].
-  final GlassTier? glassTier;
+  /// null inherits/defaults per [GlassBackdropScope.tier]. Named exactly
+  /// like the scope's parameter (tier/strategy/settings/probeOnMount) — the
+  /// whole group forwards 1:1.
+  final GlassTier? tier;
 
   /// Requested [GlassStrategy] forwarded to the scope.
-  final GlassStrategy? glassStrategy;
+  final GlassStrategy? strategy;
 
   /// [GlassSettings] forwarded to the scope; null uses
   /// [GlassSettings.instance].
-  final GlassSettings? glassSettings;
+  final GlassSettings? settings;
 
   /// Forwarded to [GlassBackdropScope.probeOnMount]. Disable in tests that
   /// drive capability manually.
@@ -185,9 +187,9 @@ class TgScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassBackdropScope(
-      tier: glassTier,
-      strategy: glassStrategy,
-      settings: glassSettings,
+      tier: tier,
+      strategy: strategy,
+      settings: settings,
       probeOnMount: probeOnMount,
       child: Builder(builder: _buildLayout),
     );
@@ -294,8 +296,8 @@ class TgScaffold extends StatelessWidget {
         value: extendBodyBehindBars,
         ifFalse: 'body between bars',
       ))
-      ..add(EnumProperty<GlassTier>('glassTier', glassTier, defaultValue: null))
-      ..add(EnumProperty<GlassStrategy>('glassStrategy', glassStrategy, defaultValue: null))
+      ..add(EnumProperty<GlassTier>('tier', tier, defaultValue: null))
+      ..add(EnumProperty<GlassStrategy>('strategy', strategy, defaultValue: null))
       ..add(FlagProperty('probeOnMount', value: probeOnMount, ifFalse: 'no probe on mount'));
   }
 }

@@ -84,7 +84,7 @@ void main() {
       late MediaQueryData seen;
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           appBar: _appBar(),
           tabBar: _tabBar(),
@@ -107,7 +107,7 @@ void main() {
       late MediaQueryData seen;
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           body: Builder(builder: (BuildContext context) {
             seen = MediaQuery.of(context);
@@ -123,7 +123,7 @@ void main() {
       late MediaQueryData seen;
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           tabBar: _tabBar(),
           body: Builder(builder: (BuildContext context) {
@@ -144,7 +144,7 @@ void main() {
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: TgScaffold(
-            glassSettings: _manualSettings(),
+            settings: _manualSettings(),
             probeOnMount: false,
             appBar: _appBar(),
             tabBar: _tabBar(),
@@ -164,7 +164,7 @@ void main() {
     testWidgets('body full-bleed; appBar and tabBar boxes', (WidgetTester tester) async {
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           appBar: _appBar(),
           tabBar: _tabBar(),
@@ -187,7 +187,7 @@ void main() {
       late MediaQueryData seen;
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           extendBodyBehindBars: false,
           appBar: _appBar(),
@@ -214,7 +214,7 @@ void main() {
     testWidgets('body is wrapped in a RepaintBoundary', (WidgetTester tester) async {
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           body: const SizedBox.expand(key: _bodyKey),
         ),
@@ -231,7 +231,7 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           tabBar: _tabBar(),
           body: const SizedBox.expand(key: _bodyKey),
@@ -259,7 +259,7 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           appBar: _appBar(),
           body: const SizedBox.expand(key: _bodyKey),
@@ -288,7 +288,7 @@ void main() {
       GlassScopeData? scope;
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           body: Builder(builder: (BuildContext context) {
             scope = GlassBackdropScope.maybeOf(context);
@@ -307,9 +307,9 @@ void main() {
       GlassScopeData? scope;
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
-          glassTier: GlassTier.flat,
+          tier: GlassTier.flat,
           body: Builder(builder: (BuildContext context) {
             scope = GlassBackdropScope.maybeOf(context);
             return const SizedBox.expand(key: _bodyKey);
@@ -326,7 +326,7 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           body: const SizedBox.expand(key: _bodyKey),
         ),
@@ -338,7 +338,7 @@ void main() {
 
       await tester.pumpWidget(_host(
         scaffold: TgScaffold(
-          glassSettings: _manualSettings(),
+          settings: _manualSettings(),
           probeOnMount: false,
           backgroundColor: const Color(0xFF123456),
           body: const SizedBox.expand(key: _bodyKey),

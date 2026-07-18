@@ -500,6 +500,95 @@ void main() {
     });
   });
 
+  group('controller swap (didUpdateWidget)', () {
+    testWidgets(
+        'external -> internal -> new external migrates listeners and '
+        'visual state', (WidgetTester tester) async {
+      final GlassSettings settings = _manualSettings();
+      final GlassTabBarController first = GlassTabBarController(index: 1);
+      addTearDown(first.dispose);
+      Widget bar(GlassTabBarController? controller) => _host(
+            settings: settings,
+            child: GlassTabBar(
+              items: _items(const <String>['One', 'Two', 'Three']),
+              controller: controller,
+            ),
+          );
+
+      await tester.pumpWidget(bar(first));
+      final GlassTabBarState state = tester.state(find.byType(GlassTabBar));
+      expect(state.debugVisualIndex, 1);
+
+      // External -> internal: the minted internal controller adopts the old
+      // controller's state.
+      await tester.pumpWidget(bar(null));
+      expect(identical(state.controller, first), isFalse);
+      expect(state.controller.index, 1);
+      expect(state.debugVisualIndex, 1);
+      // The detached old controller can still notify safely — its listener
+      // must have been removed.
+      first.animateTo(2);
+      await tester.pumpAndSettle();
+      expect(state.debugVisualIndex, 1);
+      expect(tester.takeException(), isNull);
+
+      // Internal -> a second external: selection re-syncs (unanimated) and
+      // the internal controller is released.
+      final GlassTabBarController second = GlassTabBarController(index: 2);
+      addTearDown(second.dispose);
+      await tester.pumpWidget(bar(second));
+      expect(identical(state.controller, second), isTrue);
+      expect(state.debugVisualIndex, 2);
+
+      // The new controller drives the bar...
+      second.select(0);
+      await tester.pumpAndSettle();
+      expect(state.debugVisualIndex, 0);
+
+      // ...and visibility follows it too.
+      second.hide(animated: false);
+      await tester.pumpAndSettle();
+      expect(state.debugVisibilityFactor, 0);
+      second.show(animated: false);
+      await tester.pumpAndSettle();
+      expect(state.debugVisibilityFactor, 1);
+    });
+
+    testWidgets('external -> external swap follows the new controller state',
+        (WidgetTester tester) async {
+      final GlassSettings settings = _manualSettings();
+      final GlassTabBarController first = GlassTabBarController();
+      final GlassTabBarController second =
+          GlassTabBarController(index: 2, visible: false);
+      addTearDown(first.dispose);
+      addTearDown(second.dispose);
+      Widget bar(GlassTabBarController controller) => _host(
+            settings: settings,
+            child: GlassTabBar(
+              items: _items(const <String>['One', 'Two', 'Three']),
+              controller: controller,
+            ),
+          );
+
+      await tester.pumpWidget(bar(first));
+      final GlassTabBarState state = tester.state(find.byType(GlassTabBar));
+      expect(state.debugVisualIndex, 0);
+      expect(state.debugVisibilityFactor, 1);
+
+      // The swap re-syncs selection AND visibility unanimated.
+      await tester.pumpWidget(bar(second));
+      expect(state.debugVisualIndex, 2);
+      expect(state.debugVisibilityFactor, 0);
+
+      // The old controller notifying is inert, no exception.
+      first.animateTo(1);
+      first.hide();
+      await tester.pumpAndSettle();
+      expect(state.debugVisualIndex, 2);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('selection: taps and controller API', () {
     testWidgets('tap selects, fires onSelected, animates 320ms decelerate',
         (WidgetTester tester) async {

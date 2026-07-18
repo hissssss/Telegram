@@ -61,9 +61,6 @@
 //
 // Deliberate departures, each localized and documented at its use site:
 //
-// - the time right margin is [DialogCellMetrics.timeRightMargin] = 15.666
-//   (the section-6 spec row value, = the badge margin) where upstream uses
-//   `dp(15)` (DialogCell.java:2268);
 // - the separator reserves/paints 1 *logical* px where Android adds 1
 //   *physical* px — deterministic across devicePixelRatio (goldens);
 // - when pinned, upstream shifts the time 24dp left and draws a pill-style
@@ -170,10 +167,11 @@ abstract final class DialogCellMetrics {
   /// (DialogCell.java:2431).
   static double timeTop({bool threeLines = false}) => threeLines ? 13.0 : 16.0;
 
-  /// Right margin of the time text — the section-6 spec row value (unified
-  /// with [badgeMargin]). Upstream draws the time at `w - dp(15) -
-  /// timeWidth` (DialogCell.java:2268); the port right-aligns on 15.666.
-  static const double timeRightMargin = 15.666;
+  /// Right margin of the time text: upstream draws the time at
+  /// `w - dp(15) - timeWidth` (DialogCell.java:2268). Distinct from the
+  /// unread badge's [badgeMargin] (`BADGE_MARGIN = 15.666f`,
+  /// DialogCell.java:1229).
+  static const double timeRightMargin = 15.0;
 
   /// Unread badge top: `countTop` 38 two-line (DialogCell.java:2457) /
   /// 42.33 three-line (DialogCell.java:2432-2434).
@@ -767,7 +765,8 @@ class RenderDialogCellUnreadBadge extends RenderBox {
 ///   threeLines key everywhere, DialogCell.java:1246-1258 — the port keeps
 ///   the per-variant keys of the section-6 spec row), top 39 (32), one line
 ///   (two lines when [threeLines]);
-/// - [time] at 12dp `chats_date`, top 16 (13), right-aligned at 15.666;
+/// - [time] at 12dp `chats_date`, top 16 (13), right-aligned at 15
+///   (DialogCell.java:2268);
 /// - the unread badge ([unreadCount] / [countText], [countMuted]) at the
 ///   count row, right margin 15.666;
 /// - a [pinnedIcon] slot at the count row (suppressed while a badge shows,

@@ -1,25 +1,51 @@
-# Port status — 2026-07-18 (session limit hit)
+# Port status — 2026-07-18 (review findings applied)
 
-Tree state: **verified** — `flutter analyze` clean, `flutter test` 504/504 green
+Tree state: **verified** — `flutter analyze` clean; `flutter test` 590/590
+green + 2 example tests; `python3 tool/tests/run_tests.py` 122/122
 (Flutter 3.44.6, SDK expected at /home/user/flutter-sdk or any 3.44+ stable).
 
 ## Complete
-- Architecture + extracted specs (`docs/`), token codegen pipeline (`tool/`, 122 py tests)
+- Architecture + extracted specs (`docs/`), token codegen pipeline (`tool/`)
 - `lib/src/tokens/` (generated), `foundation/`, `theme/` (data, scope, attheme codec)
 - `lib/src/glass/` — full engine: geometry, uniforms packer, presets, backdrop scope,
   runtime probe, RenderGlassSurface (liquid/frosted/flat), GlassPanel, GlassEdgeFade
 - Components: `tabs/` (GlassTabBar + GlassTab + TabIcon + CounterBadge),
   `app_bar/GlassAppBar`, `scaffold/TgScaffold`, `buttons/GlassIconButton`,
-  `cells/DialogCell`
+  `cells/` (DialogCell, UserCell, TextCell + TgSwitch, HeaderCell,
+  ShadowSectionCell), `sheet/TgBottomSheet`, `bulletin/Bulletin`
+- Public API: `lib/telegram_ui.dart` umbrella + `lib/glass.dart` /
+  `lib/theme.dart` entry points (template Calculator + template test deleted)
+- Example gallery app (`example/`): tabs_demo, glass_playground, theme_browser
+- Package metadata: real README (usage guide + licensing warning),
+  example/README, CHANGELOG 0.1.0, LICENSE (GPLv2 + derivation notice)
+- Adversarial review pass applied (this session), notably:
+  - `shaders/liquid_glass.frag` now clips its output to the SDF (1-px
+    smoothstep feather) — without it every liquid panel painted a square
+    blurred/tinted halo across its bleed-inflated rect clip on Impeller;
+  - Bulletin overlay-entry lifecycle (same-frame hide, external overlay
+    teardown) removes + disposes the entry unconditionally;
+  - late `TgShaders` load now repaints explicit-liquid panels
+    (`TgShaders.initialized` listener in RenderGlassSurface);
+  - TextCell title measure cap matches TextCell.java:201
+    (`width - dp(71 + leftPadding) - valueWidth`, anchored to leftPadding);
+  - DialogCell time right margin is dp(15) (DialogCell.java:2268; the
+    15.666 value stays badge-only);
+  - `searchFloatingDate` stroke width is 1 *physical* px
+    (`GlassSurfaceStyle.strokeWidthPhysicalPx`);
+  - CounterBadgeDecoration reuses one disposed-on-teardown TextPainter
+    instead of allocating one per animation tick;
+  - TgScaffold forwards tier/strategy/settings/probeOnMount named exactly
+    like GlassBackdropScope (glass* prefixes dropped);
+  - drift gate: kDarkThemeBrightnessThreshold == kGlassDarkBrightnessThreshold;
+  - lifecycle tests: scope settings swap, tab-bar controller swap,
+    bulletin host teardown.
 
-## Remaining (agents died at session limit — specs in ARCHITECTURE.md §6 + spec_components.md)
-1. `cells/text_cell.dart` + `header_cell.dart` + `shadow_section_cell.dart` (+ TgSwitch)
-2. `cells/user_cell.dart`
-3. `sheet/tg_bottom_sheet.dart` + `bulletin/bulletin.dart`
-4. Public API: rewrite `lib/telegram_ui.dart` umbrella export (still template Calculator!),
-   `lib/glass.dart` + `lib/theme.dart` entry points, delete template `test/telegram_ui_test.dart`
-5. Example gallery app (`example/`): tabs_demo, glass_playground, theme_browser
-6. Final: whole-package analyze+test, adversarial review pass, README usage section
+## Remaining
+- Gallery screenshot for flutter/README.md (needs a device capture —
+  flutter_tester cannot render the liquid tier).
+- Premium counter-badge variant (PremiumGradient + star) is still a
+  documented `UnimplementedError` stub.
+- GPLv2 licensing decision before any distribution (pubspec `publish_to: none`).
 
 ## Push path (platform git proxy is read-only, 403)
 `GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null git push https://github.com/hissssss/telegram.git claude/design-ui-liquid-glass-17f6mv`

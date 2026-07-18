@@ -176,6 +176,48 @@ void main() {
       expect(rect.top, (50 - 20) / 2); // TextCell.java:290
     });
 
+    testWidgets(
+        'title measure cap: width - dp(71 + leftPadding), anchored to '
+        'leftPadding even when placed at 58 (TextCell.java:201, 266)',
+        (WidgetTester tester) async {
+      final String longTitle = 'T' * 200;
+      // With an icon the title is *placed* at 58 but *measured* against
+      // leftPadding (23): max width = 800 - 71 - 23 = 706, right edge 764.
+      await tester.pumpWidget(_host(TextCell(
+        title: longTitle,
+        icon: const SizedBox(width: 24, height: 24),
+      )));
+      Rect title = tester.getRect(find.text(longTitle));
+      expect(title.left, 58.0);
+      expect(title.width, closeTo(800.0 - 71.0 - 23.0, 0.001));
+
+      // Without an icon: same cap, placed at 23, right edge 729.
+      await tester.pumpWidget(_host(TextCell(title: longTitle)));
+      title = tester.getRect(find.text(longTitle));
+      expect(title.left, 23.0);
+      expect(title.width, closeTo(800.0 - 71.0 - 23.0, 0.001));
+    });
+
+    testWidgets(
+        'with a value the title cap subtracts the value width: a 54dp '
+        'minimum gap (TextCell.java:193, 201, 255)',
+        (WidgetTester tester) async {
+      final String longTitle = 'T' * 200;
+      await tester.pumpWidget(_host(TextCell(
+        title: longTitle,
+        value: 'Val',
+      )));
+      final Rect title = tester.getRect(find.text(longTitle));
+      final Rect value = tester.getRect(find.text('Val'));
+      expect(value.right, 800.0 - 17.0); // leftPadding - 6 (TextCell.java:255)
+      // `max(0, width - dp(71 + leftPadding) - valueWidth)`.
+      expect(
+        title.width,
+        closeTo(800.0 - 71.0 - 23.0 - value.width, 0.001),
+      );
+      expect(value.left - title.right, closeTo(54.0, 0.001));
+    });
+
     testWidgets('RTL mirrors title, switch, and divider inset',
         (WidgetTester tester) async {
       await tester.pumpWidget(_host(

@@ -23,6 +23,8 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart'
+    show FlutterMemoryAllocations, ObjectCreated, ObjectDisposed, ObjectEvent;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:telegram_ui/src/components/tabs/counter_badge.dart';
@@ -532,6 +534,60 @@ void main() {
       expect(p.text, '55');
       expect(p.visibility, 1.0); // no appearance re-run
       await tester.pumpAndSettle();
+    });
+
+    testWidgets(
+        'animation ticks reuse one laid-out TextPainter, disposed on '
+        'text change and teardown', (tester) async {
+      final TelegramThemeData theme = TelegramThemeData.day();
+      Widget host(String count, {bool error = false}) => _host(
+        theme,
+        CounterBadgeDecoration(
+          count: count,
+          error: error,
+          child: const SizedBox(),
+        ),
+      );
+      await tester.pumpWidget(host('5'));
+      await tester.pumpAndSettle();
+
+      int created = 0;
+      int disposed = 0;
+      void onEvent(ObjectEvent event) {
+        if (event.object is TextPainter) {
+          if (event is ObjectCreated) {
+            created++;
+          } else if (event is ObjectDisposed) {
+            disposed++;
+          }
+        }
+      }
+
+      FlutterMemoryAllocations.instance.addListener(onEvent);
+      addTearDown(
+          () => FlutterMemoryAllocations.instance.removeListener(onEvent));
+
+      // A full 380ms error animation rebuilds the CustomPainter every tick;
+      // the laid-out TextPainter (constant text) must be reused — the old
+      // code allocated one per painted frame and disposed none.
+      await tester.pumpWidget(host('5', error: true));
+      for (int i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 40));
+      }
+      await tester.pumpAndSettle();
+      expect(created, 0);
+      expect(disposed, 0);
+
+      // A text change swaps the cached painter, disposing the old one.
+      await tester.pumpWidget(host('7', error: true));
+      await tester.pumpAndSettle();
+      expect(created, 1);
+      expect(disposed, 1);
+
+      // State teardown disposes the cache.
+      await tester.pumpWidget(const SizedBox());
+      expect(created, 1);
+      expect(disposed, 2);
     });
   });
 

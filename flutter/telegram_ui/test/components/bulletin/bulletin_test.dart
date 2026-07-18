@@ -457,5 +457,64 @@ void main() {
       expect(_banner, findsNothing);
       await expectLater(controller.closed, completes);
     });
+
+    testWidgets(
+        'two shows in one event handler (same frame) do not crash and leave '
+        'only the second visible', (WidgetTester tester) async {
+      // OverlayEntry.mounted stays false until the overlay rebuilds, so the
+      // first bulletin is hidden while its entry is inserted-but-unmounted:
+      // _finish must still remove + dispose it (a mounted-guarded remove
+      // asserted in dispose and left a permanent ghost entry).
+      await tester.pumpWidget(_host());
+      final BuildContext context = _context(tester);
+      final BulletinController first =
+          Bulletin.show(context, text: 'One', duration: null);
+      final BulletinController second =
+          Bulletin.show(context, text: 'Two', duration: null);
+      expect(tester.takeException(), isNull);
+      expect(first.isShowing, isFalse);
+      expect(identical(Bulletin.visible, second), isTrue);
+
+      await tester.pumpAndSettle();
+      expect(find.text('One'), findsNothing);
+      expect(find.text('Two'), findsOneWidget);
+      await expectLater(first.closed, completes);
+
+      second.hide(animated: false);
+      await tester.pumpAndSettle();
+      expect(_banner, findsNothing);
+    });
+
+    testWidgets('hide in the same frame as show removes the entry cleanly',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(_host());
+      final BulletinController controller =
+          Bulletin.show(_context(tester), text: 'Saved', duration: null);
+      controller.hide(); // _state is still null: straight to _finish().
+      expect(tester.takeException(), isNull);
+      expect(controller.isShowing, isFalse);
+      expect(Bulletin.visible, isNull);
+
+      await tester.pumpAndSettle();
+      expect(_banner, findsNothing);
+      await expectLater(controller.closed, completes);
+    });
+
+    testWidgets(
+        'external overlay teardown while showing completes closed and '
+        'disposes the entry', (WidgetTester tester) async {
+      await tester.pumpWidget(_host());
+      final BulletinController controller =
+          Bulletin.show(_context(tester), text: 'Saved', duration: null);
+      await tester.pumpAndSettle();
+      expect(controller.isShowing, isTrue);
+
+      // Tear the whole app (and its overlay) down without a hide().
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+      expect(controller.isShowing, isFalse);
+      expect(Bulletin.visible, isNull);
+      await expectLater(controller.closed, completes);
+    });
   });
 }

@@ -30,6 +30,8 @@
 // switch's ripple/check-icon arms (Switch.java:153-218, 296-326, 499-545).
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../../theme/telegram_resources.dart';
@@ -289,13 +291,10 @@ class TextCell extends StatelessWidget {
             View.of(context).devicePixelRatio;
     final double dividerThickness = divider ? 1.0 / devicePixelRatio : 0.0;
     final double textStart = hasIcon ? offsetFromImage : leftPadding;
-    // Trailing text inset: with a value the value's right edge sits at
-    // `leftPadding - 6` (TextCell.java:255); otherwise the title measure
-    // reserves 71dp (TextCell.java:193, 201) — which is what clears the
-    // switch slot (22 + 37dp).
-    final double textEnd = value != null
-        ? leftPadding - kTextCellValueEndInsetDelta
-        : kTextCellTextEndReserved;
+    // The value's right edge sits at `leftPadding - 6` from the trailing
+    // edge (TextCell.java:255). The title's max width is constrained
+    // separately — see the LayoutBuilder below.
+    final double valueEndInset = leftPadding - kTextCellValueEndInsetDelta;
     // `margin = heightDp > 50 ? 4 : 2` (TextCell.java:269).
     final double subtitleGap = rowHeight > kTextCellHeight
         ? kTextCellTitleSubtitleGapTall
@@ -328,8 +327,43 @@ class TextCell extends StatelessWidget {
       ],
     );
 
+    final TextStyle? valueStyle = value == null
+        ? null
+        : TextStyle(
+            fontSize: kTextCellValueTextSize,
+            color: _color(context, valueColorKey),
+          );
+
     final Widget textRow = LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
+        // The LayoutBuilder sits inside the start-only padding, so the full
+        // cell width is the incoming max width plus textStart.
+        final double cellWidth = constraints.maxWidth + textStart;
+        // Ellipsize cap `displaySize.x / 2.5f` (TextCell.java:460, 476),
+        // applied to the cell's own width here.
+        final double valueMaxWidth = cellWidth * kTextCellValueMaxWidthFraction;
+        // Java measures the value first (its actual text width feeds the
+        // title cap, TextCell.java:193-201).
+        double valueWidth = 0.0;
+        if (value != null) {
+          final TextPainter valueMeasure = TextPainter(
+            text: TextSpan(text: value, style: valueStyle),
+            textDirection: Directionality.of(context),
+            maxLines: 1,
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout(maxWidth: valueMaxWidth);
+          valueWidth = valueMeasure.width;
+          valueMeasure.dispose();
+        }
+        // Title measure cap: `max(0, width - dp(71 + leftPadding) -
+        // valueWidth)` (TextCell.java:193, 201-202) — always anchored to
+        // leftPadding regardless of the icon offset the title is *placed*
+        // at, reserving the 71dp that clears the switch slot (22 + 37dp)
+        // plus a 54dp minimum gap before a value.
+        final double titleMaxWidth = math.max(
+          0.0,
+          cellWidth - kTextCellTextEndReserved - leftPadding - valueWidth,
+        );
         return Row(
           children: <Widget>[
             Expanded(
@@ -338,28 +372,28 @@ class TextCell extends StatelessWidget {
                 // `viewTop = (...) / 2 + dp(1)` (TextCell.java:270, 275).
                 child: Transform.translate(
                   offset: const Offset(0, kTextCellTextShiftY),
-                  child: titleBlock,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: titleMaxWidth),
+                    child: titleBlock,
+                  ),
                 ),
               ),
             ),
             if (value != null)
-              // `setTranslationY(dp(-2))` (TextCell.java:116).
-              Transform.translate(
-                offset: const Offset(0, kTextCellValueShiftY),
-                child: ConstrainedBox(
-                  // Ellipsize cap `displaySize.x / 2.5f` (TextCell.java:460),
-                  // applied to the cell's own width here.
-                  constraints: BoxConstraints(
-                    maxWidth:
-                        constraints.maxWidth * kTextCellValueMaxWidthFraction,
-                  ),
-                  child: Text(
-                    value!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: kTextCellValueTextSize,
-                      color: _color(context, valueColorKey),
+              Padding(
+                // Right edge at `width - dp(leftPadding - 6)`
+                // (TextCell.java:255).
+                padding: EdgeInsetsDirectional.only(end: valueEndInset),
+                // `setTranslationY(dp(-2))` (TextCell.java:116).
+                child: Transform.translate(
+                  offset: const Offset(0, kTextCellValueShiftY),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: valueMaxWidth),
+                    child: Text(
+                      value!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: valueStyle,
                     ),
                   ),
                 ),
@@ -386,10 +420,7 @@ class TextCell extends StatelessWidget {
           children: <Widget>[
             Positioned.fill(
               child: Padding(
-                padding: EdgeInsetsDirectional.only(
-                  start: textStart,
-                  end: textEnd,
-                ),
+                padding: EdgeInsetsDirectional.only(start: textStart),
                 // Disabled alpha 0.5 on the text views only
                 // (TextCell.java:227-235) — the icon stays opaque.
                 child: Opacity(

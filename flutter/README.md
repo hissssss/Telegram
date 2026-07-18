@@ -81,8 +81,9 @@ backend can run the refraction shader (Impeller required).
 `telegram_ui/example/` is the gallery app: a DialogsActivity-style tabs demo,
 a liquid-glass playground with live sliders, and a bundled-theme browser.
 
-![gallery screenshot placeholder](docs/gallery_screenshot.png)
-<!-- TODO: capture on a device — flutter_tester cannot render the liquid tier. -->
+<!-- TODO: capture a gallery screenshot on a device and embed it here as
+     docs/gallery_screenshot.png — flutter_tester cannot render the liquid
+     tier. -->
 
 ## Toolchain
 

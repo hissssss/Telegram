@@ -7,7 +7,7 @@
 //  * geometry via finders + rect assertions: avatar 52x52 @ (11, 9) /
 //    56x56 @ (11, 11) (L2452, 2470 / L2429, 2447), name @ (76, 14) /
 //    (78, 10) (L2466, 4081 / L2443), message @ (76, 39) / (78, 32)
-//    (L2688 / L2682), time top 16 / 13 right-aligned at 15.666;
+//    (L2688 / L2682), time top 16 / 13 right-aligned at 15 (L2268);
 //  * unread badge min-width math for 1 / 99 / 999+ (L1224-1229, 2510-2515);
 //  * separator inset 72 / full (L4774-4791);
 //  * color keys light + dark: chats_name, chats_message(_threeLines),
@@ -137,7 +137,7 @@ void main() {
       expect(DialogCellMetrics.verifiedGlyphDx, -1.0);
       expect(DialogCellMetrics.verifiedGlyphTop(), 16.5);
       expect(DialogCellMetrics.verifiedGlyphTop(threeLines: true), 13.5);
-      expect(DialogCellMetrics.timeRightMargin, 15.666);
+      expect(DialogCellMetrics.timeRightMargin, 15.0); // dp(15), L2268
       expect(DialogCellMetrics.messageMinWidth, 12.0);
     });
   });
@@ -208,7 +208,7 @@ void main() {
 
   group('text positions (LTR)', () {
     testWidgets('two-line: name (76, 14), message (76, 39), time top 16 '
-        'right-aligned 15.666', (WidgetTester tester) async {
+        'right-aligned 15', (WidgetTester tester) async {
       await tester.pumpWidget(_host(const DialogCell(
         name: 'Alice',
         message: 'Hello there',
@@ -225,7 +225,8 @@ void main() {
 
       final Rect time = _rectOf(tester, find.text('12:30'));
       expect(time.top, 16.0);
-      expect(_cellWidth - time.right, moreOrLessEquals(15.666));
+      // w - dp(15) - timeWidth (DialogCell.java:2268).
+      expect(_cellWidth - time.right, moreOrLessEquals(15.0));
     });
 
     testWidgets('three-line: name (78, 10), message (78, 32), time top 13',
@@ -247,7 +248,7 @@ void main() {
 
       final Rect time = _rectOf(tester, find.text('12:30'));
       expect(time.top, 13.0);
-      expect(_cellWidth - time.right, moreOrLessEquals(15.666));
+      expect(_cellWidth - time.right, moreOrLessEquals(15.0));
 
       // Three-line variant allows two message lines (StaticLayoutEx maxLines
       // 2, DialogCell.java:2758).
@@ -589,7 +590,7 @@ void main() {
   });
 
   group('RTL mirror', () {
-    testWidgets('avatar and name mirror; time left margin 15.666',
+    testWidgets('avatar and name mirror; time left margin 15',
         (WidgetTester tester) async {
       await tester.pumpWidget(_host(
         const DialogCell(
@@ -605,7 +606,7 @@ void main() {
       final Rect name = _rectOf(tester, find.text('Alice'));
       expect(name.right, _cellWidth - 76.0);
       final Rect time = _rectOf(tester, find.text('12:30'));
-      expect(time.left, moreOrLessEquals(15.666));
+      expect(time.left, moreOrLessEquals(15.0));
     });
   });
 }

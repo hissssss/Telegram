@@ -17,6 +17,12 @@ library;
 /// a surface color is "dark" when
 /// `computePerceivedBrightness(color) < kDarkThemeBrightnessThreshold`
 /// (BlurredBackgroundColorProviderThemed.java:34-37).
+///
+/// Duplicates the generated `kGlassDarkBrightnessThreshold`
+/// (tokens/glass_metrics.g.dart) because foundation/ is a deliberately
+/// import-free leaf layer. The generated token is the source of truth for
+/// upstream re-extraction; `test/tokens_test.dart` gates the two against
+/// drifting apart.
 const double kDarkThemeBrightnessThreshold = 0.721;
 
 int _alpha(int color) => (color >> 24) & 0xFF;
