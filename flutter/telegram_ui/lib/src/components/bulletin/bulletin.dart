@@ -348,6 +348,10 @@ class _BulletinHostState extends State<_BulletinHost>
   }
 
   void _onEntered() {
+    // The Java end listener snaps the offset home (`setInOutOffset(0)`,
+    // Bulletin.java:1136) — the spring stops within tolerance of 0, not
+    // exactly at it.
+    _inOut.value = 0.0;
     // `setCanHide(true)` after the enter transition (Bulletin.java:377,
     // 393-403).
     _canHide = true;

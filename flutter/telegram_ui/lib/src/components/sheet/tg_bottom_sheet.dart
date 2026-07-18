@@ -332,7 +332,12 @@ class TgBottomSheetRoute<T> extends PopupRoute<T> {
       curved = CurvedAnimation(
         parent: animation,
         curve: openCurve,
-        reverseCurve: dismissCurve,
+        // Java dismiss is a fresh forward animator translationY 0 -> height
+        // with EASE_OUT on *forward* time (BottomSheet.java:1859-1871);
+        // Flutter evaluates reverseCurve on the decreasing parent value, so
+        // the flipped curve reproduces the identical trajectory
+        // (offset(t) = 1 - flipped(1 - t) = easeOut(t)).
+        reverseCurve: dismissCurve.flipped,
       );
       _curvedAnimation = curved;
     }
@@ -390,7 +395,7 @@ class TgBottomSheetRoute<T> extends PopupRoute<T> {
             // 180ms dismiss for every pop.
             onTap: () => Navigator.pop<T>(context, item.value),
           ),
-        if (content != null) content,
+        ?content,
       ],
     );
 
