@@ -1,0 +1,211 @@
+# groups.toml — prefix -> typed-group mapping for color_scheme.g.dart
+# (stage 2 of the token codegen pipeline, ARCHITECTURE.md §4.3).
+#
+# Matching: for each color key (bare name, `key_` prefix stripped) the group
+# with the LONGEST matching prefix wins.  Keys matching no prefix land in the
+# UngroupedColors catch-all, and emit_dart.py lints: any ungrouped key not
+# listed under [ungrouped].expected below is reported as newly-ungrouped
+# (warning only — new upstream keys must never break generation).
+#
+# Group table key = accessor name on TelegramColorScheme (must be a valid,
+# non-reserved Dart identifier).  `class` = generated wrapper class name.
+# Member getters are the key name minus the matched prefix, camelized;
+# emit_dart.py falls back to the camelized full key name when the remainder
+# would be empty, start with a digit, or collide with a reserved word.
+
+[groups.window]
+class = "WindowColors"
+prefixes = ["windowBackground"]
+doc = "windowBackground* — window / page background and on-background text"
+
+[groups.dialog]
+class = "DialogColors"
+prefixes = ["dialog"]
+doc = "dialog* — alert dialog surfaces, text and controls"
+
+[groups.actionBar]
+class = "ActionBarColors"
+prefixes = ["actionBar"]
+doc = "actionBar* — action bar chrome, tabs, submenus"
+
+[groups.chats]
+class = "DialogsColors"
+prefixes = ["chats_"]
+doc = "chats_* — the dialogs (chat list) screen"
+
+[groups.chat]
+class = "ChatColors"
+prefixes = ["chat_"]
+doc = "chat_* — chat screen: bubbles, service messages, input panel"
+
+[groups.avatar]
+class = "AvatarColors"
+prefixes = ["avatar_"]
+doc = "avatar_* — avatar fills and action-bar tints"
+
+[groups.voipgroup]
+class = "VoipGroupColors"
+prefixes = ["voipgroup_"]
+doc = "voipgroup_* — group calls UI"
+
+[groups.profile]
+class = "ProfileColors"
+prefixes = ["profile_"]
+doc = "profile_* — profile screen"
+
+[groups.stories]
+class = "StoriesColors"
+prefixes = ["stories_"]
+doc = "stories_* — stories viewer and circles"
+
+[groups.premium]
+class = "PremiumColors"
+prefixes = ["premium"]
+doc = "premium* — premium promo gradients and buttons"
+
+[groups.statistic]
+class = "StatisticColors"
+prefixes = ["statistic"]
+doc = "statisticChart* — statistics charts"
+
+[groups.location]
+class = "LocationColors"
+prefixes = ["location_"]
+doc = "location_* — location sharing UI"
+
+[groups.player]
+class = "PlayerColors"
+prefixes = ["player_"]
+doc = "player_* — full-screen audio player"
+
+[groups.inappPlayer]
+class = "InAppPlayerColors"
+prefixes = ["inappPlayer"]
+doc = "inappPlayer* — the in-app mini player bar"
+
+[groups.switches]
+class = "SwitchColors"
+prefixes = ["switch"]
+doc = "switch* — switch tracks and thumbs"
+
+[groups.checkbox]
+class = "CheckboxColors"
+prefixes = ["checkbox"]
+doc = "checkbox* — checkboxes (round and square)"
+
+[groups.featuredStickers]
+class = "FeaturedStickersColors"
+prefixes = ["featuredStickers_"]
+doc = "featuredStickers_* — featured sticker pack cells"
+
+[groups.groupcreate]
+class = "GroupCreateColors"
+prefixes = ["groupcreate_"]
+doc = "groupcreate_* — group create / invite screens"
+
+[groups.code]
+class = "CodeColors"
+prefixes = ["code_"]
+doc = "code_* — syntax highlighting in code blocks"
+
+[groups.peerColors]
+class = "PeerColors"
+prefixes = ["color_"]
+doc = "color_* — peer name color palette"
+
+[groups.glass]
+class = "GlassColors"
+prefixes = ["glass_"]
+doc = "glass_* — liquid glass tab bar and surface tint targets"
+
+[groups.accent]
+class = "AccentColors"
+prefixes = ["telegram_color"]
+doc = "telegram_color* — the Telegram accent color family"
+
+# Keys currently expected to be ungrouped (the catch-all).  emit_dart.py
+# warns about any ungrouped key NOT in this list ("newly ungrouped") so
+# upstream additions surface in codegen output without breaking the build.
+[ungrouped]
+expected = [
+  "wallpaperFileOffset",
+  "progressCircle",
+  "listSelector",
+  "settings_listSelector",
+  "emptyListPlaceholder",
+  "divider",
+  "graySection",
+  "graySectionText",
+  "radioBackground",
+  "radioBackgroundChecked",
+  "fastScrollActive",
+  "fastScrollInactive",
+  "fastScrollText",
+  "pollCreateIcons",
+  "text_RedRegular",
+  "text_RedBold",
+  "fill_RedNormal",
+  "fill_RedDark",
+  "returnToCallBackground",
+  "returnToCallMutedBackground",
+  "returnToCallText",
+  "contextProgressInner1",
+  "contextProgressOuter1",
+  "contextProgressInner2",
+  "contextProgressOuter2",
+  "contextProgressInner3",
+  "contextProgressOuter3",
+  "contextProgressInner4",
+  "contextProgressOuter4",
+  "buttonNeutral",
+  "buttonNeutralText",
+  "table_background",
+  "table_border",
+  "passport_authorizeBackground",
+  "passport_authorizeBackgroundSelected",
+  "passport_authorizeText",
+  "sharedMedia_startStopLoadIcon",
+  "sharedMedia_linkPlaceholder",
+  "sharedMedia_linkPlaceholderText",
+  "sharedMedia_photoPlaceholder",
+  "stickers_menu",
+  "stickers_menuSelector",
+  "changephoneinfo_image2",
+  "contacts_inviteBackground",
+  "contacts_inviteText",
+  "login_progressInner",
+  "login_progressOuter",
+  "picker_enabledButton",
+  "picker_disabledButton",
+  "picker_badge",
+  "picker_badgeText",
+  "files_folderIcon",
+  "files_folderIconBackground",
+  "files_iconText",
+  "sessions_devicesImage",
+  "calls_callReceivedGreenIcon",
+  "calls_callReceivedRedIcon",
+  "undo_background",
+  "undo_cancelColor",
+  "undo_infoColor",
+  "sheet_scrollUp",
+  "sheet_other",
+  "bot_loadingIcon",
+  "gift_ribbon",
+  "gift_ribbon_soldout",
+  "reactionStarSelector",
+  "topics_unreadCounter",
+  "topics_unreadCounterMuted",
+  "starsGradient1",
+  "starsGradient2",
+  "iv_background",
+  "iv_backgroundGray",
+  "iv_ab_progress",
+  "iv_navigationBackground",
+  "share_linkText",
+  "share_linkBackground",
+  "share_icon",
+  "botKeyboard_button_primary",
+  "botKeyboard_button_danger",
+  "botKeyboard_button_success",
+]

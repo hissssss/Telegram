@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "generator": "flutter/tool/gen_tokens.py",
+    "sources": {
+      "Theme.java": {
+        "path": "TMessagesProj/src/main/java/org/telegram/ui/ActionBar/Theme.java",
+        "sha256": "2c9330a91b82b3fb4af2b725a899dc738c3c3a5a45be3870a7f6081e302e1bab"
+      },
+      "ThemeColors.java": {
+        "path": "TMessagesProj/src/main/java/org/telegram/ui/ActionBar/ThemeColors.java",
+        "sha256": "62bdbfd85509efc7678dad86cae6174c7e0c5a41bf47f0cca4e75cc5117a2ce3"
+      },
+      "mini_blue.attheme": {
+        "path": "TMessagesProj/src/main/assets/mini_blue.attheme",
+        "sha256": "3382e2838b09a804ed083da45df720229acf8500d974e16498ab0a4b1aee87fb"
+      },
+      "mini_night.attheme": {
+        "path": "TMessagesProj/src/main/assets/mini_night.attheme",
+        "sha256": "e787b4b5eff8275bd000dc37f7f3dbf187fa7d02bfdda808b7d71aaa4662bb8c"
+      },
+      "mini_wall.attheme": {
+        "path": "TMessagesProj/src/main/assets/mini_wall.attheme",
+        "sha256": "230dc502b828ff8f681fd46b607fcbeb78e0a8fc6ebe2015f354a05477f89a32"
+      }
+    },
+    "counts": {
+      "keys": 14,
+      "defaultsAssigned": 13,
+      "defaultAssignments": 14,
+      "names": 13,
+      "fallbacks": 3,
+      "fallbackPuts": 4,
+      "themes": 3
+    },
+    "constants": {
+      "DEFAULT_BLACK_TEXT": "0xFF1A1D21",
+      "TELEGRAM_COLOR": "0xFF229AF0",
+      "TELEGRAM_COLOR_TEXT": "0xFF298ACF"
+    },
+    "forcedOpaqueKeys": [
+      "windowBackgroundWhite",
+      "windowBackgroundGray",
+      "actionBarDefault",
+      "actionBarDefaultArchived"
+    ],
+    "keysWithoutDefault": [
+      "chat_serviceBackground"
+    ],
+    "keysWithoutName": [
+      "premiumStartSmallStarsColor"
+    ],
+    "themes": {
+      "Mini Blue": {
+        "asset": "mini_blue.attheme",
+        "entries": 7,
+        "wallpaperFileOffset": -1,
+        "wallpaperLink": null,
+        "droppedFinalLine": null,
+        "unknownNames": [
+          "unknownKeyName"
+        ]
+      },
+      "Mini Night": {
+        "asset": "mini_night.attheme",
+        "entries": 4,
+        "wallpaperFileOffset": -1,
+        "wallpaperLink": null,
+        "droppedFinalLine": "telegram_color=-14509328",
+        "unknownNames": []
+      },
+      "Mini Wall": {
+        "asset": "mini_wall.attheme",
+        "entries": 3,
+        "wallpaperFileOffset": 85,
+        "wallpaperLink": "https://example.com/wall",
+        "droppedFinalLine": null,
+        "unknownNames": []
+      }
+    }
+  },
+  "keys": [
+    "wallpaperFileOffset",
+    "dialogBackground",
+    "windowBackgroundWhite",
+    "windowBackgroundGray",
+    "actionBarDefault",
+    "actionBarDefaultArchived",
+    "listSelector",
+    "graySectionText",
+    "windowBackgroundWhiteGrayText2",
+    "chat_inBubble",
+    "chat_serviceBackground",
+    "premiumStartSmallStarsColor",
+    "telegram_color",
+    "glass_tabSelected"
+  ],
+  "defaults": {
+    "wallpaperFileOffset": "0x00000000",
+    "dialogBackground": "0xFFFFFFFF",
+    "windowBackgroundWhite": "0xFFFFFFFF",
+    "windowBackgroundGray": "0xFFF1F1F3",
+    "actionBarDefault": "0xFF1A1D21",
+    "actionBarDefaultArchived": "0xFF228BFF",
+    "listSelector": "0x121A1D21",
+    "graySectionText": "0xFF9A9C9E",
+    "windowBackgroundWhiteGrayText2": "0xFF808384",
+    "chat_inBubble": "0xFF298ACF",
+    "premiumStartSmallStarsColor": "0x5AFFFFFF",
+    "telegram_color": "0xFF229AF0",
+    "glass_tabSelected": "0xFF1A91E6"
+  },
+  "names": {
+    "wallpaperFileOffset": "wallpaperFileOffset",
+    "dialogBackground": "dialogBackground",
+    "windowBackgroundWhite": "windowBackgroundWhite",
+    "windowBackgroundGray": "windowBackgroundGray",
+    "actionBarDefault": "actionBarDefault",
+    "actionBarDefaultArchived": "actionBarDefaultArchived",
+    "listSelector": "listSelectorSDK21",
+    "graySectionText": "key_graySectionText",
+    "windowBackgroundWhiteGrayText2": "windowBackgroundWhiteGrayText2",
+    "chat_inBubble": "chat_inBubble",
+    "chat_serviceBackground": "chat_serviceBackground",
+    "telegram_color": "telegram_color",
+    "glass_tabSelected": "glass_tabSelected"
+  },
+  "fallbacks": {
+    "graySectionText": "windowBackgroundWhiteGrayText2",
+    "chat_serviceBackground": "dialogBackground",
+    "glass_tabSelected": "telegram_color"
+  },
+  "themes": {
+    "Mini Blue": {
+      "wallpaperFileOffset": "0xFFFFFFFF",
+      "dialogBackground": "0xFF1A1D21",
+      "windowBackgroundWhite": "0xFF181819",
+      "listSelector": "0x80112233",
+      "graySectionText": "0xFFFFFFFF",
+      "chat_inBubble": "0xFF298ACF",
+      "telegram_color": "0x10FFFFFF"
+    },
+    "Mini Night": {
+      "wallpaperFileOffset": "0xFFFFFFFF",
+      "windowBackgroundWhite": "0xFF111111",
+      "actionBarDefault": "0x0000007B",
+      "glass_tabSelected": "0x00000000"
+    },
+    "Mini Wall": {
+      "wallpaperFileOffset": "0x00000055",
+      "dialogBackground": "0xFF228BFF",
+      "windowBackgroundWhite": "0xFFFFFFFF"
+    }
+  }
+}

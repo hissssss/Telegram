@@ -1,0 +1,323 @@
+# extract_spec.yaml — curated (file, regex, name) scalar extraction list.
+#
+# Consumed by flutter/tool/extract_metrics.py (which ships its own stdlib-only
+# parser for exactly the YAML subset used here: top-level scalars plus one
+# list of flat maps; single-quoted strings; inline int lists).
+#
+# Each entry pulls one constant of ARCHITECTURE.md §3.4 out of the Telegram
+# Android sources and emits it into
+# flutter/telegram_ui/lib/src/tokens/glass_metrics.g.dart. If upstream Java
+# drifts, either the regex stops matching (extraction fails loudly) or the
+# value changes (surfaces as a codegen diff under --check).
+#
+# Entry keys:
+#   name     Dart constant name (k-prefixed lowerCamelCase).
+#   doc      one-line doc comment for the generated constant.
+#   file     source path relative to the repo root.
+#   pattern  Python regex; the value comes from capture group `group`.
+#   kind     int | float | expr | color | int_list  (expr is evaluated,
+#            e.g. '40 - 1.66f' -> 38.34; int_list reads the groups in `groups`).
+#   dart     double | int | color | intList — emitted Dart type
+#            (defaults: int->int, float/expr->double, color->color,
+#            int_list->intList).
+#   group    capture group index, default 1.
+#   groups   capture group indices for int_list.
+#   match    0-based match index when `matches` > 1, default 0.
+#   matches  exact number of matches the pattern must produce, default 1.
+#   dotall   apply re.DOTALL, default false.
+#   equal    group indices whose parsed values must all be equal (sanity).
+#
+# Values suffixed `Dp` are logical dp — multiply by the device pixel ratio at
+# runtime (dp() ceil semantics vs dpf2() exact float live in dimens.dart).
+
+version: 1
+output: 'flutter/telegram_ui/lib/src/tokens/glass_metrics.g.dart'
+
+constants:
+  # --- Liquid lens (BlurredBackgroundDrawableRenderNode.java:115-118, Props) --
+  - name: kGlassThicknessDefaultDp
+    doc: 'Default lens thickness in dp when liquidThickness <= 0 (dp(11) at draw time).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawableRenderNode.java'
+    pattern: 'liquidThickness <= 0 \? dp\((\d+)\) :'
+    kind: int
+    dart: double
+  - name: kGlassThicknessBoundsDivisor
+    doc: 'Thickness is clamped to min(width, height) / this divisor (Java int division).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawableRenderNode.java'
+    pattern: 'Math\.min\(boundProps\.boundsWithPadding\.width\(\), boundProps\.boundsWithPadding\.height\(\)\) / (\d+)\), (\d+)\);'
+    kind: int
+  - name: kGlassThicknessMinPx
+    doc: 'Absolute thickness floor in physical px after clamping.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawableRenderNode.java'
+    pattern: 'Math\.min\(boundProps\.boundsWithPadding\.width\(\), boundProps\.boundsWithPadding\.height\(\)\) / (\d+)\), (\d+)\);'
+    kind: int
+    group: 2
+  - name: kGlassRefractIntensityDefault
+    doc: 'Default refraction displacement multiplier (Props.liquidIntensity).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java'
+    pattern: 'liquidIntensity = ([0-9.]+)f?;'
+    kind: float
+  - name: kGlassRefractIndex
+    doc: 'Index of refraction (Props.liquidIndex) — no production setter exists, always 1.5.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java'
+    pattern: 'liquidIndex = ([0-9.]+)f?;'
+    kind: float
+
+  # --- Themed tint (BlurredBackgroundColorProviderThemed.java) ---------------
+  - name: kGlassTintAlphaLiquid
+    doc: 'Themed tint alpha when the liquid-glass LiteMode flag is enabled.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'LiteMode\.isEnabled\(LiteMode\.FLAG_LIQUID_GLASS\) \? ([0-9.]+)f : ([0-9.]+)f'
+    kind: float
+  - name: kGlassTintAlphaFrosted
+    doc: 'Themed tint alpha in frosted (non-liquid) mode.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'LiteMode\.isEnabled\(LiteMode\.FLAG_LIQUID_GLASS\) \? ([0-9.]+)f : ([0-9.]+)f'
+    kind: float
+    group: 2
+  - name: kGlassDarkBrightnessThreshold
+    doc: 'Perceived brightness below this value selects the dark stroke/shadow set.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'computePerceivedBrightness\(color\) < ([0-9.]+)f'
+    kind: float
+
+  # --- Themed stroke/shadow colors (ibid.:43-51; dark branch, then light) ----
+  - name: kGlassStrokeTopColorDark
+    doc: 'Top hairline stroke color, dark themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'strokeColorTop = (0|0x[0-9A-Fa-f]+);\s*strokeColorBottom = (0|0x[0-9A-Fa-f]+);\s*shadowColor = (0|0x[0-9A-Fa-f]+);'
+    kind: color
+    matches: 2
+  - name: kGlassStrokeBottomColorDark
+    doc: 'Bottom hairline stroke color, dark themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'strokeColorTop = (0|0x[0-9A-Fa-f]+);\s*strokeColorBottom = (0|0x[0-9A-Fa-f]+);\s*shadowColor = (0|0x[0-9A-Fa-f]+);'
+    kind: color
+    group: 2
+    matches: 2
+  - name: kGlassShadowColorDark
+    doc: 'Drop shadow color, dark themes (0 = no shadow).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'strokeColorTop = (0|0x[0-9A-Fa-f]+);\s*strokeColorBottom = (0|0x[0-9A-Fa-f]+);\s*shadowColor = (0|0x[0-9A-Fa-f]+);'
+    kind: color
+    group: 3
+    matches: 2
+  - name: kGlassStrokeTopColorLight
+    doc: 'Top hairline stroke color, light themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'strokeColorTop = (0|0x[0-9A-Fa-f]+);\s*strokeColorBottom = (0|0x[0-9A-Fa-f]+);\s*shadowColor = (0|0x[0-9A-Fa-f]+);'
+    kind: color
+    match: 1
+    matches: 2
+  - name: kGlassStrokeBottomColorLight
+    doc: 'Bottom hairline stroke color, light themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'strokeColorTop = (0|0x[0-9A-Fa-f]+);\s*strokeColorBottom = (0|0x[0-9A-Fa-f]+);\s*shadowColor = (0|0x[0-9A-Fa-f]+);'
+    kind: color
+    group: 2
+    match: 1
+    matches: 2
+  - name: kGlassShadowColorLight
+    doc: 'Drop shadow color, light themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/BlurredBackgroundColorProviderThemed.java'
+    pattern: 'strokeColorTop = (0|0x[0-9A-Fa-f]+);\s*strokeColorBottom = (0|0x[0-9A-Fa-f]+);\s*shadowColor = (0|0x[0-9A-Fa-f]+);'
+    kind: color
+    group: 3
+    match: 1
+    matches: 2
+
+  # --- Default stroke widths / shadow (BlurredBackgroundDrawable.java:46-53) --
+  - name: kGlassStrokeWidthTopDp
+    doc: 'Default top stroke width in dp (dpf2 exact-float semantics).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java'
+    pattern: 'boundProps\.strokeWidthTop = dpf2\(([^)]+)\);'
+    kind: expr
+  - name: kGlassStrokeWidthBottomDp
+    doc: 'Default bottom stroke width in dp (2/3 dp).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java'
+    pattern: 'boundProps\.strokeWidthBottom = dpf2\(([^)]+)\);'
+    kind: expr
+  - name: kGlassShadowRadiusDp
+    doc: 'Default shadow blur radius in dp.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java'
+    pattern: 'shadowLayerRadius = dpf2\(([^)]+)\);'
+    kind: expr
+  - name: kGlassShadowDxDp
+    doc: 'Default shadow x offset in dp.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java'
+    pattern: 'shadowLayerDx = (\d+);'
+    kind: int
+    dart: double
+  - name: kGlassShadowDyDp
+    doc: 'Default shadow y offset in dp (1/3 dp).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/BlurredBackgroundDrawable.java'
+    pattern: 'shadowLayerDy = dpf2\(([^)]+)\);'
+    kind: expr
+
+  # --- Backdrop pyramid (DownscaleScrollableNoiseSuppressor.java:408-428) ----
+  - name: kGlassBackdropDownscale
+    doc: 'Glass chain downscale factor (4x per axis).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/DownscaleScrollableNoiseSuppressor.java'
+    pattern: 'renderNodesForGlass\.setScale\((\d+), (\d+)\);'
+    kind: int
+    equal: [1, 2]
+  - name: kGlassBackdropBlurRadiusDp
+    doc: 'Glass chain blur radius in dp (dpf2), paired with the saturation matrix.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/DownscaleScrollableNoiseSuppressor.java'
+    pattern: 'renderNodesForGlass\.setPrimaryEffectBlur\(dpf2\(([0-9.]+)f?\), RenderNodeEffects\.getSaturationX3RenderEffect\(\)\);'
+    kind: float
+  - name: kFrostedBackdropDownscale
+    doc: 'Frosted chain downscale factor (8x per axis), applied over the glass output.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/DownscaleScrollableNoiseSuppressor.java'
+    pattern: 'renderNodesForGlass\.setPrimaryEffectBlur\([^;]*;\s*renderNodesForBlur = new DownscaledRenderNode\("blur", 0\);\s*renderNodesForBlur\.setScale\((\d+), (\d+)\);\s*renderNodesForBlur\.setPrimaryEffectBlur\(dpf2\(([^)]+)\)\);'
+    kind: int
+    dotall: true
+    equal: [1, 2]
+  - name: kFrostedBackdropBlurRadiusDp
+    doc: 'Frosted chain blur radius in dp — the 40 - 1.66 = 38.34 expression, evaluated.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/DownscaleScrollableNoiseSuppressor.java'
+    pattern: 'renderNodesForGlass\.setPrimaryEffectBlur\([^;]*;\s*renderNodesForBlur = new DownscaledRenderNode\("blur", 0\);\s*renderNodesForBlur\.setScale\((\d+), (\d+)\);\s*renderNodesForBlur\.setPrimaryEffectBlur\(dpf2\(([^)]+)\)\);'
+    kind: expr
+    group: 3
+    dotall: true
+  - name: kGlassBackdropSaturation
+    doc: 'Color-matrix saturation factor of the glass/frosted chains (x3).'
+    file: 'TMessagesProj/src/main/java/org/telegram/messenger/utils/RenderNodeEffects.java'
+    pattern: 'getSaturationX3RenderEffect\(\).*?setSaturation\(([0-9.]+)f?\)'
+    kind: float
+    dotall: true
+
+  # --- Edge fade (BlurredBackgroundWithFadeDrawable.java) --------------------
+  - name: kFadeDefaultHeightDp
+    doc: 'Default fade height in dp (opacity=false, 5-stop table).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/BlurredBackgroundWithFadeDrawable.java'
+    pattern: 'setFadeHeight\(dp\((\d+)\), false\);'
+    kind: int
+    dart: double
+  - name: kFadeMainTabsHeightDp
+    doc: 'MainTabs fade height in dp (opacity=true, 4-stop table).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/MainTabsActivity.java'
+    pattern: 'fadeDrawable\.setFadeHeight\(dp\((\d+)\), true\);'
+    kind: int
+    dart: double
+  - name: kFadeStopAlphasOpacity
+    doc: 'Evenly-spaced gradient alpha numerators, opacity=true (4 stops, over 285).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/BlurredBackgroundWithFadeDrawable.java'
+    pattern: 'if \(opacity\) \{\s*return new LinearGradient\(0, 0, 0, 1, new int\[\]\{\s*ColorUtils\.setAlphaComponent\(color, (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*\}, null'
+    kind: int_list
+    groups: [1, 2, 4, 6]
+    dotall: true
+  - name: kFadeStopAlphaDivisorOpacity
+    doc: 'Alpha divisor for the opacity=true stop table — 285, so max is about 0.813 of the source alpha.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/BlurredBackgroundWithFadeDrawable.java'
+    pattern: 'if \(opacity\) \{\s*return new LinearGradient\(0, 0, 0, 1, new int\[\]\{\s*ColorUtils\.setAlphaComponent\(color, (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*\}, null'
+    kind: int
+    group: 3
+    dotall: true
+    equal: [3, 5, 7]
+  - name: kFadeStopAlphasDefault
+    doc: 'Evenly-spaced gradient alpha numerators, opacity=false (5 stops, over 255).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/BlurredBackgroundWithFadeDrawable.java'
+    pattern: 'return new LinearGradient\(0, 0, 0, 1, new int\[\]\{\s*ColorUtils\.setAlphaComponent\(color, (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*\}, null'
+    kind: int_list
+    groups: [1, 2, 4, 6, 8]
+    dotall: true
+  - name: kFadeStopAlphaDivisorDefault
+    doc: 'Alpha divisor for the opacity=false stop table (255).'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/BlurredBackgroundWithFadeDrawable.java'
+    pattern: 'return new LinearGradient\(0, 0, 0, 1, new int\[\]\{\s*ColorUtils\.setAlphaComponent\(color, (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*ColorUtils\.setAlphaComponent\(color, (0x[0-9A-Fa-f]+) \* alpha / (\d+)\),\s*\}, null'
+    kind: int
+    group: 3
+    dotall: true
+    equal: [3, 5, 7, 9]
+
+  # --- mainTabs preset (BlurredBackgroundProviderImpl.java:19-33) ------------
+  - name: kMainTabsTintAlphaLiquid
+    doc: 'mainTabs solveSrcColor target alpha, liquid mode.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?FLAG_LIQUID_GLASS\) \? ([0-9.]+)f : ([0-9.]+)f'
+    kind: float
+    dotall: true
+  - name: kMainTabsTintAlphaFrosted
+    doc: 'mainTabs solveSrcColor target alpha, frosted mode.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?FLAG_LIQUID_GLASS\) \? ([0-9.]+)f : ([0-9.]+)f'
+    kind: float
+    group: 2
+    dotall: true
+  - name: kMainTabsStrokeTopColorLight
+    doc: 'mainTabs top stroke color, light themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: color
+    dotall: true
+  - name: kMainTabsStrokeTopColorDark
+    doc: 'mainTabs top stroke color, dark themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: color
+    group: 2
+    dotall: true
+  - name: kMainTabsStrokeBottomColorLight
+    doc: 'mainTabs bottom stroke color, light themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: color
+    group: 3
+    dotall: true
+  - name: kMainTabsStrokeBottomColorDark
+    doc: 'mainTabs bottom stroke color, dark themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: color
+    group: 4
+    dotall: true
+  - name: kMainTabsShadowColorLight
+    doc: 'mainTabs shadow color, light themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: color
+    group: 5
+    dotall: true
+  - name: kMainTabsShadowColorDark
+    doc: 'mainTabs shadow color, dark themes.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: color
+    group: 6
+    dotall: true
+  - name: kMainTabsShadowRadiusDp
+    doc: 'mainTabs shadow blur radius in dp.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: float
+    group: 7
+    dotall: true
+  - name: kMainTabsShadowDxDp
+    doc: 'mainTabs shadow x offset in dp.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: float
+    group: 8
+    dotall: true
+  - name: kMainTabsShadowDyDp
+    doc: 'mainTabs shadow y offset in dp.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: float
+    group: 9
+    dotall: true
+  - name: kMainTabsStrokeWidthTopDp
+    doc: 'mainTabs top stroke width in dp.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: float
+    group: 10
+    dotall: true
+  - name: kMainTabsStrokeWidthBottomDp
+    doc: 'mainTabs bottom stroke width in dp.'
+    file: 'TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java'
+    pattern: 'public static BlurredBackgroundProvider mainTabs\(.*?\.setStrokeColorTop\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setStrokeColorBottom\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowColor\((0x[0-9A-Fa-f]+), (0x[0-9A-Fa-f]+)\)\s*\.setShadowLayer\(dpf2\(([0-9.]+)f?\), ([0-9.]+), dpf2\(([0-9.]+)f?\)\)\s*\.setStrokeWidth\(dpf2\(([0-9.]+)f?\), dpf2\(([0-9.]+)f?\)\)'
+    kind: float
+    group: 11
+    dotall: true
