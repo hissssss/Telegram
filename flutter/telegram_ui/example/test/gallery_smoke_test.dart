@@ -1,4 +1,4 @@
-// Smoke test for the gallery app: it builds, all three pages mount, and
+// Smoke test for the gallery app: it builds, all four pages mount, and
 // bottom navigation switches between them. Runs under flutter_tester, where
 // the glass probe resolves non-liquid and every surface renders frosted/flat.
 
@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:telegram_ui/telegram_ui.dart';
 import 'package:telegram_ui_example/main.dart';
+import 'package:telegram_ui_example/pages/chat_demo.dart';
 import 'package:telegram_ui_example/pages/glass_playground.dart';
 import 'package:telegram_ui_example/pages/tabs_demo.dart';
 import 'package:telegram_ui_example/pages/theme_browser.dart';
@@ -15,7 +16,7 @@ void main() {
     GlassSettings.instance.debugReset();
   });
 
-  testWidgets('gallery builds and navigates between all three pages',
+  testWidgets('gallery builds and navigates between all four pages',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3.0;
@@ -30,6 +31,14 @@ void main() {
     expect(find.text('Telegram'), findsWidgets);
     expect(find.byType(DialogCell), findsWidgets);
     expect(find.byType(GlassTabBar), findsOneWidget);
+
+    // Chat demo: composed ChatInput docked over the bubble list.
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChatDemoPage), findsOneWidget);
+    expect(find.byType(ChatInput), findsOneWidget);
+    expect(find.byType(ChatInputBar), findsOneWidget);
+    expect(find.byType(RecordSendButton), findsOneWidget);
 
     // Glass playground.
     await tester.tap(find.text('Glass'));

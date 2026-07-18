@@ -1,8 +1,9 @@
-# Port status — 2026-07-18 (review findings applied)
+# Port status — 2026-07-18 (chat input composed + wired)
 
-Tree state: **verified** — `flutter analyze` clean; `flutter test` 590/590
-green + 2 example tests; `python3 tool/tests/run_tests.py` 122/122
-(Flutter 3.44.6, SDK expected at /home/user/flutter-sdk or any 3.44+ stable).
+Tree state: **verified** — `flutter analyze` clean (package + example);
+`flutter test` 672/672 green + 2 example tests; `python3
+tool/tests/run_tests.py` 122/122 (Flutter 3.44.6, SDK expected at
+/home/user/flutter-sdk or any 3.44+ stable).
 
 ## Complete
 - Architecture + extracted specs (`docs/`), token codegen pipeline (`tool/`)
@@ -12,10 +13,18 @@ green + 2 example tests; `python3 tool/tests/run_tests.py` 122/122
 - Components: `tabs/` (GlassTabBar + GlassTab + TabIcon + CounterBadge),
   `app_bar/GlassAppBar`, `scaffold/TgScaffold`, `buttons/GlassIconButton`,
   `cells/` (DialogCell, UserCell, TextCell + TgSwitch, HeaderCell,
-  ShadowSectionCell), `sheet/TgBottomSheet`, `bulletin/Bulletin`
+  ShadowSectionCell), `sheet/TgBottomSheet`, `bulletin/Bulletin`,
+  `chat_input/` (ChatInputBar island + ChatInputBarController,
+  RecordSendButton mic/video/send + RecordCircle, RecordOverlay
+  slide-to-cancel/lock/timer/round-video chrome + RecordOverlayController,
+  and the composed ChatInput wiring all three through the CAEV state
+  machine — typing -> send morph, hold-to-record, slide cancel, lock
+  persists hands-free, CANCEL/send resolve; capture stays callback slots)
 - Public API: `lib/telegram_ui.dart` umbrella + `lib/glass.dart` /
   `lib/theme.dart` entry points (template Calculator + template test deleted)
-- Example gallery app (`example/`): tabs_demo, glass_playground, theme_browser
+- Example gallery app (`example/`): tabs_demo, chat_demo (fake bubble list
+  over a busy gradient with the composed ChatInput, fake record clock and
+  synthesized amplitude feed), glass_playground, theme_browser
 - Package metadata: real README (usage guide + licensing warning),
   example/README, CHANGELOG 0.1.0, LICENSE (GPLv2 + derivation notice)
 - Adversarial review pass applied (this session), notably:

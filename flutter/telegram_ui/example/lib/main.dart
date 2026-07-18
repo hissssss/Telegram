@@ -1,8 +1,10 @@
 // telegram_ui gallery app (ARCHITECTURE.md section 2: example/).
 //
-// Three pages:
+// Four pages:
 //  * tabs demo        — a DialogsActivity-style replica (TgScaffold +
 //                       GlassAppBar + DialogCells + GlassTabBar);
+//  * chat demo        — fake message bubbles over a busy gradient with the
+//                       composed ChatInput and its full record flow;
 //  * glass playground — every LiquidGlassSettings field as a live slider
 //                       over a busy background;
 //  * theme browser    — the five bundled themes with swatches + apply, and a
@@ -13,6 +15,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:telegram_ui/telegram_ui.dart';
 
+import 'pages/chat_demo.dart';
 import 'pages/glass_playground.dart';
 import 'pages/tabs_demo.dart';
 import 'pages/theme_browser.dart';
@@ -117,17 +120,25 @@ class _GalleryHomeState extends State<GalleryHome> {
         index: _index,
         children: const <Widget>[
           TabsDemoPage(),
+          ChatDemoPage(),
           GlassPlaygroundPage(),
           ThemeBrowserPage(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        // Four destinations: keep the fixed type so every label stays
+        // visible (the default flips to shifting at 4+ items).
+        type: BottomNavigationBarType.fixed,
         currentIndex: _index,
         onTap: (int index) => setState(() => _index = index),
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline_rounded),
             label: 'Tabs',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.mic_none_rounded),
+            label: 'Chat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.blur_on_rounded),
