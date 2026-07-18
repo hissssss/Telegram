@@ -228,6 +228,7 @@ class RenderGlassSurface extends RenderProxyBox {
   final LayerHandle<ClipRRectLayer> _frostedClipLayer = LayerHandle<ClipRRectLayer>();
   final LayerHandle<ClipRectLayer> _liquidClipLayer = LayerHandle<ClipRectLayer>();
   LiquidGlassUniforms? _uniforms;
+  bool _listeningForShaderLoad = false;
 
   /// The requested fidelity tier (see [effectiveTier] for what actually
   /// paints).
@@ -394,17 +395,25 @@ class RenderGlassSurface extends RenderProxyBox {
   /// The [GlassGeometry] this surface paints for the given [bounds] —
   /// exposed so tests and callers can probe the exact stroke/shadow/clip
   /// paths without painting.
-  GlassGeometry geometryFor(Rect bounds) => GlassGeometry(
-    bounds: bounds,
-    radii: _radii,
-    forceBottomZero: _forceBottomZero,
-    padding: _padding,
-    strokeWidthTop: _style.strokeWidthTop,
-    strokeWidthBottom: _style.strokeWidthBottom,
-    shadowRadius: _style.shadowRadius,
-    shadowDx: _style.shadowDx,
-    shadowDy: _style.shadowDy,
-  );
+  ///
+  /// Stroke widths flagged [GlassSurfaceStyle.strokeWidthPhysicalPx] (the
+  /// `searchFloatingDate` raw-px recipe) are converted to logical px here,
+  /// so the hairline stays one physical pixel on every density.
+  GlassGeometry geometryFor(Rect bounds) {
+    final double strokeUnit =
+        _style.strokeWidthPhysicalPx ? 1.0 / _devicePixelRatio : 1.0;
+    return GlassGeometry(
+      bounds: bounds,
+      radii: _radii,
+      forceBottomZero: _forceBottomZero,
+      padding: _padding,
+      strokeWidthTop: _style.strokeWidthTop * strokeUnit,
+      strokeWidthBottom: _style.strokeWidthBottom * strokeUnit,
+      shadowRadius: _style.shadowRadius,
+      shadowDx: _style.shadowDx,
+      shadowDy: _style.shadowDy,
+    );
+  }
 
   @override
   void paint(PaintingContext context, Offset offset) {
@@ -418,6 +427,49 @@ class RenderGlassSurface extends RenderProxyBox {
     if (paintsDecoration) {
       _paintStrokes(context.canvas, geometry);
     }
+    _syncShaderLoadListener();
+  }
+
+  /// While a liquid request paints degraded because [TgShaders] has not
+  /// loaded yet, watch for the load so this surface repaints on completion.
+  /// Without this, a panel whose *widget-side* inputs never change (an
+  /// explicit `tier: GlassTier.liquid` override, or a forced-liquid
+  /// kill-switch) would stay frosted until an unrelated repaint — the scope
+  /// resolution path repaints via a value change, but re-applied identical
+  /// field values no-op every setter.
+  void _syncShaderLoadListener() {
+    final bool shouldListen =
+        attached && _tier == GlassTier.liquid && !TgShaders.isInitialized;
+    if (shouldListen == _listeningForShaderLoad) {
+      return;
+    }
+    _listeningForShaderLoad = shouldListen;
+    if (shouldListen) {
+      TgShaders.initialized.addListener(_onShaderLoadChanged);
+    } else {
+      TgShaders.initialized.removeListener(_onShaderLoadChanged);
+    }
+  }
+
+  void _onShaderLoadChanged() {
+    // One-shot: the flip invalidates the degraded paint decision; the next
+    // paint re-registers if still relevant (e.g. after a debugReset).
+    _stopListeningForShaderLoad();
+    markNeedsPaint();
+  }
+
+  void _stopListeningForShaderLoad() {
+    if (!_listeningForShaderLoad) {
+      return;
+    }
+    _listeningForShaderLoad = false;
+    TgShaders.initialized.removeListener(_onShaderLoadChanged);
+  }
+
+  @override
+  void detach() {
+    _stopListeningForShaderLoad();
+    super.detach();
   }
 
   /// Step 1 — the blurred drop shadow drawn before everything else
@@ -565,6 +617,7 @@ class RenderGlassSurface extends RenderProxyBox {
 
   @override
   void dispose() {
+    _stopListeningForShaderLoad();
     _backdropLayer.layer = null;
     _frostedClipLayer.layer = null;
     _liquidClipLayer.layer = null;

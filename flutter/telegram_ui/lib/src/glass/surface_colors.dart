@@ -66,6 +66,7 @@ class GlassSurfaceStyle {
     this.shadowDx = kGlassShadowDxDp,
     this.shadowDy = kGlassShadowDyDp,
     this.tintAlpha = 0.0,
+    this.strokeWidthPhysicalPx = false,
   });
 
   /// Port of `BlurredBackgroundColorProviderThemed` — a single theme key
@@ -140,6 +141,15 @@ class GlassSurfaceStyle {
   /// the tint (e.g. crossfading against a differently-tinted backdrop).
   final double tintAlpha;
 
+  /// Whether [strokeWidthTop]/[strokeWidthBottom] are *physical* pixels
+  /// instead of logical dp. Almost every Java recipe wraps its widths in
+  /// `dpf2()` at draw time (making logical dp the natural port unit), but
+  /// `searchFloatingDate` passes a raw `1` px
+  /// (BlurredBackgroundProviderImpl.java:114) — the renderer divides by the
+  /// devicePixelRatio at draw time when this is set, keeping the hairline
+  /// exactly one physical pixel on every density, as on Android.
+  final bool strokeWidthPhysicalPx;
+
   /// Copy with the given fields replaced.
   GlassSurfaceStyle copyWith({
     Color? backgroundColor,
@@ -152,6 +162,7 @@ class GlassSurfaceStyle {
     double? shadowDx,
     double? shadowDy,
     double? tintAlpha,
+    bool? strokeWidthPhysicalPx,
   }) {
     return GlassSurfaceStyle(
       backgroundColor: backgroundColor ?? this.backgroundColor,
@@ -164,6 +175,8 @@ class GlassSurfaceStyle {
       shadowDx: shadowDx ?? this.shadowDx,
       shadowDy: shadowDy ?? this.shadowDy,
       tintAlpha: tintAlpha ?? this.tintAlpha,
+      strokeWidthPhysicalPx:
+          strokeWidthPhysicalPx ?? this.strokeWidthPhysicalPx,
     );
   }
 
@@ -179,7 +192,8 @@ class GlassSurfaceStyle {
       other.shadowRadius == shadowRadius &&
       other.shadowDx == shadowDx &&
       other.shadowDy == shadowDy &&
-      other.tintAlpha == tintAlpha;
+      other.tintAlpha == tintAlpha &&
+      other.strokeWidthPhysicalPx == strokeWidthPhysicalPx;
 
   @override
   int get hashCode => Object.hash(
@@ -193,6 +207,7 @@ class GlassSurfaceStyle {
         shadowDx,
         shadowDy,
         tintAlpha,
+        strokeWidthPhysicalPx,
       );
 
   @override
@@ -200,7 +215,8 @@ class GlassSurfaceStyle {
       'GlassSurfaceStyle(backgroundColor: $backgroundColor, '
       'strokeColorTop: $strokeColorTop, strokeColorBottom: $strokeColorBottom, '
       'shadowColor: $shadowColor, '
-      'strokeWidthTop: $strokeWidthTop, strokeWidthBottom: $strokeWidthBottom, '
+      'strokeWidthTop: $strokeWidthTop, strokeWidthBottom: $strokeWidthBottom'
+      '${strokeWidthPhysicalPx ? ' (physical px)' : ''}, '
       'shadowRadius: $shadowRadius, shadowDx: $shadowDx, shadowDy: $shadowDy, '
       'tintAlpha: $tintAlpha)';
 }
@@ -240,6 +256,7 @@ class GlassSurfaceStyleBuilder {
   double _shadowDx = kGlassShadowDxDp;
   double _shadowDy = kGlassShadowDyDp;
   double _tintAlpha = 0.0;
+  bool _strokeWidthPhysicalPx = false;
 
   /// Sets the shadow color pair — `setShadowColor(light, dark)` (lines 29-32).
   GlassSurfaceStyleBuilder setShadowColor(int light, int dark) {
@@ -278,10 +295,18 @@ class GlassSurfaceStyleBuilder {
   }
 
   /// Sets the hairline widths in logical dp — `setStrokeWidth(top, bottom)`
-  /// (lines 56-60).
-  GlassSurfaceStyleBuilder setStrokeWidth(double top, double bottom) {
+  /// (lines 56-60). Pass [physicalPx] for the one Java recipe whose widths
+  /// are raw physical px, not `dpf2()`-wrapped
+  /// (`searchFloatingDate`, BlurredBackgroundProviderImpl.java:114) — see
+  /// [GlassSurfaceStyle.strokeWidthPhysicalPx].
+  GlassSurfaceStyleBuilder setStrokeWidth(
+    double top,
+    double bottom, {
+    bool physicalPx = false,
+  }) {
     _strokeWidthTop = top;
     _strokeWidthBottom = bottom;
+    _strokeWidthPhysicalPx = physicalPx;
     return this;
   }
 
@@ -310,6 +335,7 @@ class GlassSurfaceStyleBuilder {
       shadowDx: _shadowDx,
       shadowDy: _shadowDy,
       tintAlpha: _tintAlpha,
+      strokeWidthPhysicalPx: _strokeWidthPhysicalPx,
     );
   }
 }

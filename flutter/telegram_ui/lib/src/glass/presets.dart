@@ -209,8 +209,11 @@ abstract final class GlassPresets {
   /// Fixed `0x33000000` background in both palettes (line 110); strokes
   /// `0x17000000`/`0x17FFFFFF`; no shadow color; shadow layer stays at the
   /// builder default (1, 0, 1/3)dp — the Java recipe never calls
-  /// `setShadowLayer`. Widths: Java passes a raw `1` px (line 114, not
-  /// `dpf2(1)`), preserved here as 1.0. [tier] is unused.
+  /// `setShadowLayer`. Widths: Java passes a raw `1` *physical* px (line
+  /// 114, deliberately not `dpf2(1)`), so the style is flagged
+  /// `strokeWidthPhysicalPx` and the renderer divides by the
+  /// devicePixelRatio at draw time — a 1-physical-px hairline on every
+  /// density, exactly like Android. [tier] is unused.
   static GlassSurfaceStyle searchFloatingDate(
     TelegramResources resources, {
     GlassTier tier = GlassTier.liquid,
@@ -220,7 +223,7 @@ abstract final class GlassPresets {
         .setStrokeColorTop(0x17000000, 0x17FFFFFF)
         .setStrokeColorBottom(0x17000000, 0x17FFFFFF)
         .setShadowColor(0, 0)
-        .setStrokeWidth(1, 1)
+        .setStrokeWidth(1, 1, physicalPx: true)
         .setTintAlpha(0x33 / 0xFF)
         .build();
   }

@@ -11,6 +11,14 @@
 // Coordinates: FlutterFragCoord() is top-left-origin pixel space matching the
 // AGSL fragCoord. Refraction displacement happens in that pixel space; the
 // normalized flip for GLES happens only at sampling time.
+//
+// Deliberate addition vs the AGSL (ARCHITECTURE.md section 3.2): the output is
+// clipped to the SDF with a 1-px smoothstep feather. Android clips the effect
+// render node to the rounded outline (setClipToOutline,
+// BlurredBackgroundDrawableRenderNode.java:39, 79-85); the Flutter port pushes
+// the backdrop layer under a plain rect clip inflated by the refraction bleed
+// (a rounded clip would clamp backdrop sampling and kill rim refraction), so
+// the shader itself must emit transparency outside the panel.
 
 #include <flutter/runtime_effect.glsl>
 
@@ -72,5 +80,10 @@ void main() {
     uv += refract_vec.xy * refract_length * u_refract_intensity;
   }
 
-  frag_color = srcOver(u_foreground_color, sampleBackdrop(uv));
+  // SDF output clip (no AGSL analog — see the header comment): fully
+  // transparent outside the panel so the srcOver-composited backdrop layer
+  // preserves the destination there, with a 1-px anti-aliased edge. The
+  // coverage factor scales the premultiplied color as a whole.
+  float coverage = 1.0 - smoothstep(-1.0, 0.0, sd);
+  frag_color = coverage * srcOver(u_foreground_color, sampleBackdrop(uv));
 }

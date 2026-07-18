@@ -283,6 +283,17 @@ void main() {
       expect(style.shadowDy, 1 / 3);
       expect(style.strokeWidthTop, 1.0); // line 114 (raw 1, not dpf2)
       expect(style.strokeWidthBottom, 1.0);
+      // The raw value is *physical* px on the Java side (the only recipe
+      // without dpf2); the renderer divides by devicePixelRatio at draw time.
+      expect(style.strokeWidthPhysicalPx, isTrue);
+    });
+
+    test('the raw-px flag is unique to this recipe', () {
+      expect(GlassPresets.mainTabs(dayRes).strokeWidthPhysicalPx, isFalse);
+      expect(
+          GlassPresets.attachMenuSearch(dayRes).strokeWidthPhysicalPx, isFalse);
+      expect(
+          GlassPresets.bottomPanelChat(dayRes).strokeWidthPhysicalPx, isFalse);
     });
 
     test('dark strokes flip to white hex', () {

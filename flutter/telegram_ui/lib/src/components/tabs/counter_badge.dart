@@ -138,8 +138,15 @@ class CounterBadgePainter extends CustomPainter {
     this.errorFactor = 0.0,
     this.premium = false,
     this.center,
-  }) : assert(visibility >= 0.0 && visibility <= 1.0),
-       assert(errorFactor >= 0.0 && errorFactor <= 1.0) {
+    TextPainter? counterPainter,
+  }) : _externalCounterPainter = counterPainter,
+       assert(visibility >= 0.0 && visibility <= 1.0),
+       assert(errorFactor >= 0.0 && errorFactor <= 1.0),
+       assert(
+         counterPainter == null ||
+             (counterPainter.text as TextSpan?)?.text == text,
+         'counterPainter must be laid out for the same text',
+       ) {
     if (premium) {
       throw UnimplementedError(
         'Premium counter badge is not ported yet: PremiumGradient round rect '
@@ -184,14 +191,21 @@ class CounterBadgePainter extends CustomPainter {
   /// icon center). Pass an explicit center when decorating a bare icon.
   final Offset? center;
 
+  /// Caller-owned laid-out painter (see [buildCounterPainter]); when set the
+  /// painter allocates no text resources of its own. [CounterBadgeDecoration]
+  /// passes one so its per-tick rebuilds reuse a single [TextPainter] instead
+  /// of allocating (and never disposing) one per animation frame.
+  final TextPainter? _externalCounterPainter;
+
   TextPainter? _textPainterCache;
 
-  /// The laid-out counter text — the port of the `AnimatedTextDrawable`
-  /// configured at GlassTabView.java:98-103 (10dp Roboto Medium, white,
-  /// gravity center). TextHeightBehavior pinned per ARCHITECTURE.md
-  /// section 5.
-  TextPainter get _counter {
-    return _textPainterCache ??= TextPainter(
+  /// Builds and lays out the counter [TextPainter] — the port of the
+  /// `AnimatedTextDrawable` configured at GlassTabView.java:98-103 (10dp
+  /// Roboto Medium, white, gravity center). TextHeightBehavior pinned per
+  /// ARCHITECTURE.md section 5. The caller owns (and must dispose) the
+  /// returned painter.
+  static TextPainter buildCounterPainter(String text) {
+    return TextPainter(
       text: TextSpan(text: text, style: CounterBadge.textStyle),
       textDirection: TextDirection.ltr,
       textHeightBehavior: const TextHeightBehavior(
@@ -199,6 +213,19 @@ class CounterBadgePainter extends CustomPainter {
         applyHeightToLastDescent: false,
       ),
     )..layout();
+  }
+
+  /// The laid-out counter text: the caller-owned painter when provided,
+  /// otherwise a lazily built one released by [dispose].
+  TextPainter get _counter =>
+      _externalCounterPainter ?? (_textPainterCache ??= buildCounterPainter(text));
+
+  /// Releases the internally cached [TextPainter], if any (standalone use
+  /// without a `counterPainter`). [CustomPainter] has no dispose lifecycle,
+  /// so owners that construct painters directly should call this when done.
+  void dispose() {
+    _textPainterCache?.dispose();
+    _textPainterCache = null;
   }
 
   /// Measured text width — `counter.getCurrentWidth()`
@@ -490,6 +517,21 @@ class _CounterBadgeDecorationState extends State<CounterBadgeDecoration>
   /// `AnimatedTextDrawable` whose text outlives the visibility animator.
   late String _text = widget.count ?? '';
 
+  /// One reusable laid-out [TextPainter] keyed by [_text] — rebuilding a
+  /// fresh painter (and re-laying-out the text) on every 380ms-animator tick
+  /// would allocate a native Paragraph per frame that nothing disposes.
+  TextPainter? _counterPainter;
+  String? _counterPainterText;
+
+  TextPainter _counterPainterFor(String text) {
+    if (_counterPainter == null || _counterPainterText != text) {
+      _counterPainter?.dispose();
+      _counterPainter = CounterBadgePainter.buildCounterPainter(text);
+      _counterPainterText = text;
+    }
+    return _counterPainter!;
+  }
+
   late final Ticker _ticker;
 
   /// Monotonic clock base: [BoolFactor.tick] requires non-decreasing
@@ -536,6 +578,8 @@ class _CounterBadgeDecorationState extends State<CounterBadgeDecoration>
   @override
   void dispose() {
     _ticker.dispose();
+    _counterPainter?.dispose();
+    _counterPainter = null;
     super.dispose();
   }
 
@@ -560,6 +604,7 @@ class _CounterBadgeDecorationState extends State<CounterBadgeDecoration>
         errorColor: _color(context, TelegramColorKey.fill_RedNormal),
         premium: widget.premium,
         center: widget.center,
+        counterPainter: _counterPainterFor(_text),
       ),
       child: widget.child,
     );

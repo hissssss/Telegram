@@ -267,9 +267,15 @@ class BulletinController {
     final OverlayEntry? entry = _entry;
     _entry = null;
     if (entry != null) {
-      if (entry.mounted) {
-        entry.remove();
-      }
+      // remove() unconditionally: `entry.mounted` stays false until the
+      // overlay rebuilds, so a hide in the same frame as show (a second
+      // Bulletin.show in one event handler, or an immediate hide()) would
+      // skip a mounted-guarded remove and leave the entry inserted —
+      // dispose() then asserts, and the overlay would later mount a
+      // disposed entry. This is the only place that removes the entry, so
+      // its `_overlay` is always still set here; remove() itself no-ops on
+      // an unmounted overlay state.
+      entry.remove();
       entry.dispose();
     }
     if (!_closed.isCompleted) {
@@ -277,13 +283,22 @@ class BulletinController {
     }
   }
 
-  /// Host teardown without a normal hide (overlay being disposed): mark
-  /// closed but leave the entry to the framework.
+  /// Host teardown without a normal hide (the overlay itself being torn
+  /// down): release the entry and complete [closed]. The entry must still be
+  /// removed + disposed here — nothing else ever will, and an undisposed
+  /// entry leaks its internal notifier (the pattern mirrors the framework's
+  /// own `_WrappingOverlayState.dispose`; remove() no-ops on the unmounted
+  /// overlay state).
   void _detached() {
     if (identical(Bulletin._visible, this)) {
       Bulletin._visible = null;
     }
+    final OverlayEntry? entry = _entry;
     _entry = null;
+    if (entry != null) {
+      entry.remove();
+      entry.dispose();
+    }
     if (!_closed.isCompleted) {
       _closed.complete();
     }

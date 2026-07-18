@@ -27,6 +27,7 @@ import 'package:telegram_ui/src/glass/geometry.dart';
 import 'package:telegram_ui/src/glass/glass_fade.dart';
 import 'package:telegram_ui/src/glass/glass_panel.dart';
 import 'package:telegram_ui/src/glass/liquid_glass_settings.dart';
+import 'package:telegram_ui/src/glass/liquid_glass_shader.dart';
 import 'package:telegram_ui/src/glass/presets.dart';
 import 'package:telegram_ui/src/glass/render_glass_surface.dart';
 import 'package:telegram_ui/src/glass/runtime_probe.dart';
@@ -405,6 +406,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+        'late shader load repaints a panel with an explicit liquid override',
+        (WidgetTester tester) async {
+      TgShaders.debugReset();
+      addTearDown(TgShaders.debugReset);
+      await tester.pumpWidget(
+        const Center(
+          child: SizedBox(
+            width: 200,
+            height: 72,
+            child: RepaintBoundary(
+              child: GlassPanel(
+                tier: GlassTier.liquid,
+                style: _testStyle,
+                borderRadius: GlassRadii.all(28),
+              ),
+            ),
+          ),
+        ),
+      );
+      final RenderGlassSurface surface =
+          tester.renderObject(find.byType(GlassPanel)) as RenderGlassSurface;
+      // Degraded at paint time: the fragment program has not loaded.
+      expect(surface.tier, GlassTier.liquid);
+      expect(surface.effectiveTier, GlassTier.frosted);
+      expect(surface.debugNeedsPaint, isFalse);
+
+      await TgShaders.ensureInitialized();
+      // The load completion must invalidate the degraded surface even though
+      // no widget-side input changed (updateRenderObject would re-apply
+      // identical values and every setter would no-op). Without the
+      // TgShaders.initialized listener the panel stays frosted until an
+      // unrelated repaint.
+      expect(surface.debugNeedsPaint, isTrue);
+      await tester.pump();
+      expect(surface.debugNeedsPaint, isFalse);
+      // flutter_tester still has no shader image filter, so the repaint
+      // stays frosted here; on Impeller the same repaint flips to liquid.
+      expect(surface.effectiveTier, GlassTier.frosted);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('FrostedPanel pins the frosted tier', (WidgetTester tester) async {
       final GlassSettings settings = GlassSettings(probe: () async => const GlassCapability.supported());
       await settings.ensureProbed();
@@ -532,6 +575,48 @@ void main() {
       // Square bottom clip corners produce no bottom hairline.
       expect(geometry.strokeRingBottom.getBounds().isEmpty, isTrue);
       expect(geometry.strokeRingTop.getBounds().isEmpty, isFalse);
+    });
+
+    testWidgets(
+        'physical-px stroke widths resolve against the devicePixelRatio '
+        '(searchFloatingDate raw 1px, BlurredBackgroundProviderImpl.java:114)',
+        (WidgetTester tester) async {
+      const GlassSurfaceStyle rawPxStyle = GlassSurfaceStyle(
+        strokeColorTop: Color(0x17000000),
+        strokeColorBottom: Color(0x17FFFFFF),
+        strokeWidthTop: 1,
+        strokeWidthBottom: 1,
+        strokeWidthPhysicalPx: true,
+      );
+      await tester.pumpWidget(
+        const MediaQuery(
+          data: MediaQueryData(devicePixelRatio: 3.0),
+          child: Center(
+            child: SizedBox(
+              width: 200,
+              height: 56,
+              child: GlassPanel(
+                tier: GlassTier.flat,
+                style: rawPxStyle,
+                borderRadius: GlassRadii.all(16),
+              ),
+            ),
+          ),
+        ),
+      );
+      final RenderGlassSurface surface =
+          tester.renderObject(find.byType(GlassPanel)) as RenderGlassSurface;
+      final GlassGeometry geometry = surface.geometryFor(Offset.zero & surface.size);
+      // 1 physical px = 1/3 logical px at dpr 3 — Android draws this recipe's
+      // hairline at exactly one physical pixel on every density.
+      expect(geometry.strokeWidthTop, moreOrLessEquals(1.0 / 3.0));
+      expect(geometry.strokeWidthBottom, moreOrLessEquals(1.0 / 3.0));
+
+      // Logical-dp styles are untouched by the devicePixelRatio.
+      surface.style = rawPxStyle.copyWith(strokeWidthPhysicalPx: false);
+      final GlassGeometry dpGeometry = surface.geometryFor(Offset.zero & surface.size);
+      expect(dpGeometry.strokeWidthTop, 1.0);
+      expect(dpGeometry.strokeWidthBottom, 1.0);
     });
 
     testWidgets('the surface consumes hits over its whole rect', (WidgetTester tester) async {

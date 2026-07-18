@@ -23,7 +23,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier, visibleForTesting;
 
 import '../foundation/dimens.dart';
 import '../tokens/glass_metrics.g.dart';
@@ -55,9 +55,17 @@ const double kUniformDirtyEpsilon = 0.1;
 abstract final class TgShaders {
   static ui.FragmentProgram? _liquidGlass;
   static Future<ui.FragmentProgram>? _pending;
+  static final ValueNotifier<bool> _initializedNotifier = ValueNotifier<bool>(false);
 
   /// Whether [ensureInitialized] has completed successfully.
   static bool get isInitialized => _liquidGlass != null;
+
+  /// Notifies when [isInitialized] flips — the hook `RenderGlassSurface`
+  /// uses to repaint a liquid-requesting surface that had to degrade to
+  /// frosted because the program had not loaded yet (a late
+  /// [ensureInitialized] completion would otherwise leave a static panel
+  /// frosted until an unrelated repaint).
+  static ValueListenable<bool> get initialized => _initializedNotifier;
 
   /// The loaded liquid-glass program.
   ///
@@ -98,6 +106,7 @@ abstract final class TgShaders {
         program = await ui.FragmentProgram.fromAsset(kLiquidGlassShaderPackageAsset);
       }
       _liquidGlass = program;
+      _initializedNotifier.value = true;
       return program;
     } finally {
       _pending = null;
@@ -110,6 +119,7 @@ abstract final class TgShaders {
   static void debugReset() {
     _liquidGlass = null;
     _pending = null;
+    _initializedNotifier.value = false;
   }
 }
 
