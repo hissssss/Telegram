@@ -5,7 +5,7 @@
 //
 // - row height 50dp (`heightDp`, TextCell.java:62); subtitle rows are set to
 //   60dp by their callers (`cell.heightDp = 60`, ThemeActivity.java:2688,
-//   2697);
+//   2696);
 // - default left padding 23dp (TextCell.java:79), icon left 16dp
 //   (TextCell.java:63), text-over-icon offset 58dp (TextCell.java:61,
 //   `getOffsetFromImage`, TextCell.java:824-826);
@@ -41,7 +41,7 @@ import '../app_bar/glass_app_bar.dart' show TgAccelerateDecelerateCurve;
 const double kTextCellHeight = 50.0;
 
 /// Height callers give subtitle rows: `cell.heightDp = 60`
-/// (ThemeActivity.java:2688, 2697 — the Java cell never grows itself; its
+/// (ThemeActivity.java:2688, 2696 — the Java cell never grows itself; its
 /// `heightDp` field is set at bind time).
 const double kTextCellSubtitleHeight = 60.0;
 
@@ -212,7 +212,7 @@ class TextCell extends StatelessWidget {
   final double? dividerInset;
 
   /// Row height override (`heightDp`, TextCell.java:62); defaults to 50dp,
-  /// or 60dp with a [subtitle] (ThemeActivity.java:2688, 2697).
+  /// or 60dp with a [subtitle] (ThemeActivity.java:2688, 2696).
   final double? height;
 
   /// Text left padding without an icon (TextCell.java:79).

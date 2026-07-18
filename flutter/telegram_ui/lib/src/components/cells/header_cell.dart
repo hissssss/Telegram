@@ -13,8 +13,8 @@
 //   `windowBackgroundWhiteBlueHeader` (HeaderCell.java:49, 94-99);
 // - horizontal padding: the Java constructor default is 18dp
 //   (HeaderCell.java:49), but the catalog pins 21dp — the value production
-//   list screens pass (e.g. StarsIntroActivity.java:682,
-//   PrivacyUsersActivity.java:432, ContactsAdapter.java:432);
+//   list screens pass (e.g. Stars/StarsIntroActivity.java:682,
+//   PrivacyUsersActivity.java:432, Adapters/ContactsAdapter.java:431);
 // - disabled state: 0.5 alpha on the text (HeaderCell.java:142-149).
 //
 // Deliberately NOT ported: the animated-text variant (HeaderCell.java:83-91)
@@ -34,8 +34,8 @@ const double kHeaderCellHeight = 40.0;
 const double kHeaderCellTextSize = 14.0;
 
 /// Horizontal padding: 21dp — the production call-site value
-/// (StarsIntroActivity.java:682 et al.; the bare constructor default is
-/// 18dp, HeaderCell.java:49).
+/// (Stars/StarsIntroActivity.java:682 et al.; the bare constructor default
+/// is 18dp, HeaderCell.java:49).
 const double kHeaderCellPadding = 21.0;
 
 /// Top margin above the text block: 7dp (constructor default,
@@ -132,6 +132,10 @@ class HeaderCell extends StatelessWidget {
             constraints: BoxConstraints(minHeight: height - topMargin),
             child: Align(
               alignment: AlignmentDirectional.centerStart,
+              // Wrap the text height (the Java cell measures UNSPECIFIED and
+              // wraps, HeaderCell.java:160-162) instead of filling a bounded
+              // parent; the ConstrainedBox above keeps the min height.
+              heightFactor: 1.0,
               child: Opacity(
                 opacity: enabled ? 1.0 : kHeaderCellDisabledAlpha,
                 child: Text(

@@ -126,7 +126,7 @@ void main() {
         subtitle: 'Subtitle',
       )));
       // Callers set heightDp = 60 for subtitle rows
-      // (ThemeActivity.java:2688, 2697).
+      // (ThemeActivity.java:2688, 2696).
       expect(tester.getSize(find.byType(TextCell)), const Size(800, 60));
       final Offset title = tester.getTopLeft(find.text('Title'));
       final Offset subtitle = tester.getTopLeft(find.text('Subtitle'));
