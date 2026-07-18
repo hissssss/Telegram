@@ -1,0 +1,32 @@
+name: telegram_ui
+description: >-
+  Flutter port of the Telegram Android design system: liquid glass rendering,
+  theme tokens (.attheme compatible), and the core component catalog.
+version: 0.1.0
+publish_to: none # Blocked on GPLv2 licensing decision — see flutter/README.md.
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  shaders:
+    - shaders/liquid_glass.frag
+  fonts:
+    - family: RobotoMedium
+      fonts:
+        - asset: fonts/rmedium.ttf
+          weight: 500
+    - family: RobotoExtraBold
+      fonts:
+        - asset: fonts/rextrabold.ttf
+          weight: 800
