@@ -41,9 +41,15 @@ export 'src/glass/surface_colors.dart';
 
 // Components
 export 'src/components/app_bar/glass_app_bar.dart';
+export 'src/components/bulletin/bulletin.dart';
 export 'src/components/buttons/glass_icon_button.dart';
 export 'src/components/cells/dialog_cell.dart';
+export 'src/components/cells/header_cell.dart';
+export 'src/components/cells/shadow_section_cell.dart';
+export 'src/components/cells/text_cell.dart';
+export 'src/components/cells/user_cell.dart';
 export 'src/components/scaffold/tg_scaffold.dart';
+export 'src/components/sheet/tg_bottom_sheet.dart';
 export 'src/components/tabs/counter_badge.dart';
 export 'src/components/tabs/glass_tab.dart';
 export 'src/components/tabs/glass_tab_bar.dart';
