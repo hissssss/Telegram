@@ -41,6 +41,7 @@ export 'src/glass/surface_colors.dart';
 
 // Components
 export 'src/components/app_bar/glass_app_bar.dart';
+export 'src/components/app_bar/glass_app_bar_search_field.dart';
 export 'src/components/attach/tg_attach_sheet.dart';
 export 'src/components/bulletin/bulletin.dart';
 export 'src/components/buttons/glass_icon_button.dart';

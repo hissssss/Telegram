@@ -25,6 +25,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:telegram_ui/src/components/app_bar/glass_app_bar.dart';
+import 'package:telegram_ui/src/components/app_bar/glass_app_bar_search_field.dart';
 import 'package:telegram_ui/src/foundation/tg_curves.dart';
 import 'package:telegram_ui/src/glass/backdrop_scope.dart';
 import 'package:telegram_ui/src/glass/glass_panel.dart';
@@ -608,6 +609,173 @@ void main() {
       expect(state.debugMainPillRadii!.topLeft, closeTo(20.665, 1e-9));
       await tester.pump(const Duration(milliseconds: 80));
       expect(state.debugMainPillRadii!.topLeft, 23.0);
+    });
+  });
+
+  group('search field wiring (ActionBarMenuItem.java:874-1010; '
+      'ActionBar.java:271-274)', () {
+    testWidgets('searchMode without a builder mounts the built-in field '
+        'and fades it over 150ms', (WidgetTester tester) async {
+      Widget host({required bool searchMode}) => _host(
+            child: GlassAppBar(
+              title: 'Chats',
+              searchMode: searchMode,
+              searchHint: 'Search',
+            ),
+          );
+      await tester.pumpWidget(host(searchMode: false));
+      await tester.pump();
+      expect(find.byType(GlassAppBarSearchField), findsNothing);
+
+      await tester.pumpWidget(host(searchMode: true));
+      expect(find.byType(GlassAppBarSearchField), findsOneWidget);
+      expect(_opacityOf(tester, find.byKey(GlassAppBar.searchContentKey)), 0.0);
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(_opacityOf(tester, find.byKey(GlassAppBar.searchContentKey)),
+          closeTo(0.5, 1e-9));
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(_opacityOf(tester, find.byKey(GlassAppBar.searchContentKey)), 1.0);
+
+      // Socket geometry: from 66dp (ActionBar.java:1412, 1518) to the
+      // trailing edge, over the bar band.
+      expect(tester.getRect(find.byType(GlassAppBarSearchField)),
+          const Rect.fromLTRB(kGlassAppBarSearchContentLeft, 0, 400, 56));
+      // The field carries the bar's hint text.
+      final Text hint =
+          tester.widget<Text>(find.byKey(GlassAppBarSearchField.hintKey));
+      expect(hint.data, 'Search');
+      // Hint color key actionBarDefaultSearchPlaceholder
+      // (ActionBarMenuItem.java:1492).
+      expect(hint.style!.color,
+          _dayTheme.color(TelegramColorKey.actionBarDefaultSearchPlaceholder));
+
+      // Collapse unmounts it once the fade lands.
+      await tester.pumpWidget(host(searchMode: false));
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump();
+      expect(find.byType(GlassAppBarSearchField), findsNothing);
+    });
+
+    testWidgets('open resets the text and focuses; close unfocuses '
+        '(ActionBarMenuItem.java:993-996, 947)', (WidgetTester tester) async {
+      final TextEditingController controller =
+          TextEditingController(text: 'stale query');
+      final FocusNode focusNode = FocusNode();
+      addTearDown(controller.dispose);
+      addTearDown(focusNode.dispose);
+      Widget host({required bool searchMode}) => _host(
+            child: GlassAppBar(
+              title: 'Chats',
+              searchMode: searchMode,
+              searchController: controller,
+              searchFocusNode: focusNode,
+            ),
+          );
+      await tester.pumpWidget(host(searchMode: false));
+      await tester.pump();
+
+      await tester.pumpWidget(host(searchMode: true));
+      // searchField.setText("") on open (ActionBarMenuItem.java:993).
+      expect(controller.text, isEmpty);
+      // requestFocus lands on the next frame (the field mounts this build).
+      await tester.pump();
+      expect(focusNode.hasFocus, isTrue);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.pumpWidget(host(searchMode: false));
+      // searchField.clearFocus() on collapse (ActionBarMenuItem.java:947).
+      expect(focusNode.hasFocus, isFalse);
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
+    testWidgets('searchAutoFocus false opens without grabbing focus '
+        '(the openKeyboard flag, ActionBarMenuItem.java:896)',
+        (WidgetTester tester) async {
+      final FocusNode focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+      Widget host({required bool searchMode}) => _host(
+            child: GlassAppBar(
+              title: 'Chats',
+              searchMode: searchMode,
+              searchFocusNode: focusNode,
+              searchAutoFocus: false,
+            ),
+          );
+      await tester.pumpWidget(host(searchMode: false));
+      await tester.pumpWidget(host(searchMode: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(focusNode.hasFocus, isFalse);
+    });
+
+    testWidgets('typed text reaches onSearchChanged through the built-in '
+        'field', (WidgetTester tester) async {
+      final List<String> changes = <String>[];
+      await tester.pumpWidget(_host(
+        child: GlassAppBar(
+          title: 'Chats',
+          searchMode: true,
+          searchHint: 'Search',
+          onSearchChanged: changes.add,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.byType(EditableText), 'cats');
+      await tester.pumpAndSettle();
+      expect(changes, <String>['cats']);
+    });
+
+    testWidgets('while searching, the back slot closes search instead of '
+        'its own action (ActionBar.java:271-274)',
+        (WidgetTester tester) async {
+      int leadingTaps = 0;
+      int closes = 0;
+      Widget host({required bool searchMode}) => _host(
+            child: GlassAppBar(
+              title: 'Chats',
+              searchMode: searchMode,
+              leading: GestureDetector(
+                key: const Key('back-button'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => leadingTaps++,
+                child: const SizedBox(width: 24, height: 24),
+              ),
+              onSearchClose: () => closes++,
+            ),
+          );
+
+      // Not searching: no overlay, the leading slot acts itself.
+      await tester.pumpWidget(host(searchMode: false));
+      await tester.pump();
+      expect(find.byKey(GlassAppBar.searchCloseKey), findsNothing);
+      await tester.tap(find.byKey(const Key('back-button')));
+      expect(leadingTaps, 1);
+      expect(closes, 0);
+
+      // Searching: the overlay absorbs the slot and closes search. Like the
+      // Java isSearchFieldVisible, it flips with searchMode immediately.
+      await tester.pumpWidget(host(searchMode: true));
+      expect(find.byKey(GlassAppBar.searchCloseKey), findsOneWidget);
+      await tester.tap(find.byKey(const Key('back-button')),
+          warnIfMissed: false);
+      expect(leadingTaps, 1);
+      expect(closes, 1);
+      await tester.pump(const Duration(milliseconds: 200));
+    });
+
+    testWidgets('a custom searchBuilder overrides the built-in field',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(_host(
+        child: GlassAppBar(
+          title: 'Chats',
+          searchMode: true,
+          searchBuilder: (BuildContext context) => const Text('CUSTOM'),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.byType(GlassAppBarSearchField), findsNothing);
+      expect(find.text('CUSTOM'), findsOneWidget);
     });
   });
 

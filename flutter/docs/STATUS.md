@@ -72,8 +72,14 @@ telegram_ui_lottie); `flutter test` 731/731 green (telegram_ui) + 8
 ## Remaining
 - Gallery screenshot for flutter/README.md (needs a device capture —
   flutter_tester cannot render the liquid tier).
-- Premium counter-badge variant (PremiumGradient + star) is still a
-  documented `UnimplementedError` stub.
+- ~~Premium counter-badge variant~~ DONE: `CounterBadgePainter`
+  `premium: true` now draws the GlassTabView.java:196-206 pass — the
+  4-stop `premiumGradient1..4` main-gradient round rect (the
+  PremiumGradientTools shader math of PremiumGradient.java:211-222/258,
+  96x16 matrix, ported standalone — the rest of PremiumGradient is not)
+  plus the white 14dp `res/drawable/star.xml` path, visibility pinned
+  to 1; `CounterBadgeDecoration(premium: true)` resolves the four keys
+  through the theme/resources.
 - GPLv2 licensing decision before any distribution (pubspec `publish_to: none`).
 
 ## Push path (platform git proxy is read-only, 403)

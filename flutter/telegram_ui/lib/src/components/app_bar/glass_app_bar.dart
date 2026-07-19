@@ -40,6 +40,25 @@
 // The pills render at [GlassTier.frosted] by default — the "frosted for
 // full-width bars" area budget of ARCHITECTURE.md section 3.5.
 //
+// The in-bar search *field* (ActionBarMenuItem's search layout) lives in
+// glass_app_bar_search_field.dart ([GlassAppBarSearchField]) and mounts in the
+// search socket by default when [GlassAppBar.searchMode] flips true; the
+// [GlassAppBar.searchBuilder] slot overrides it with custom content. The
+// open/close wiring ports:
+//
+// - open: the field text resets and the field grabs focus
+//   (`searchField.setText(""); searchField.requestFocus()` + show keyboard,
+//   ActionBarMenuItem.java:993-996), gated by [GlassAppBar.searchAutoFocus]
+//   (the `openKeyboard` flag, ActionBarMenuItem.java:896);
+// - close: the field drops focus (`searchField.clearFocus()`,
+//   ActionBarMenuItem.java:947);
+// - while search is visible a tap on the back/leading slot closes search
+//   instead of activating the slot (`backButtonImageView` click:
+//   `if (isSearchFieldVisible) { closeSearchField(); return; }`,
+//   ActionBar.java:271-274) — the port notifies [GlassAppBar.onSearchClose];
+//   the Java `MenuDrawable` back-arrow morph (ActionBar.java:1266-1272) is a
+//   drawable of the caller-owned leading slot and is not ported.
+//
 // Deliberately NOT ported (out of the v1 glass scope, kept as doc pointers):
 // the action mode (ActionBar.java:767-1100), the non-glass adaptive scroll
 // background (320ms `windowBackgroundGray` -> `actionBarDefault`,
@@ -47,10 +66,7 @@
 // ActionBar.java:216), `extraHeight`, the tablet metrics, the
 // `chatAvatarContainer` width animation (ActionBar.java:2090-2113), the
 // avatar-search image, and the `overlayTitleAnimation` crossfade arm of
-// `setTitleAnimated` (ActionBar.java:1872-1879). The in-bar search *field*
-// (ActionBarMenuItem's search layout) is deferred too: [GlassAppBar.searchMode]
-// plus [GlassAppBar.searchBuilder] are the 150ms expand/collapse hook, and the
-// builder slot is where the future search field mounts.
+// `setTitleAnimated` (ActionBar.java:1872-1879).
 library;
 
 import 'dart:math' as math;
@@ -68,6 +84,7 @@ import '../../glass/strategy.dart';
 import '../../theme/telegram_resources.dart';
 import '../../theme/telegram_theme.dart';
 import '../../tokens/theme_keys.g.dart';
+import 'glass_app_bar_search_field.dart';
 
 /// Portrait bar height: `dp(56)` (`getCurrentActionBarHeight`,
 /// ActionBar.java:1858-1859).
@@ -324,6 +341,13 @@ class GlassAppBar extends StatefulWidget implements PreferredSizeWidget {
     this.isForum = false,
     this.searchMode = false,
     this.searchBuilder,
+    this.searchController,
+    this.searchFocusNode,
+    this.searchHint,
+    this.onSearchChanged,
+    this.onSearchSubmitted,
+    this.onSearchClose,
+    this.searchAutoFocus = true,
     this.animateTitleChange = false,
     this.titleChangeFromBottom = false,
     this.titleChangeDuration = kGlassAppBarTitleSwapDuration,
@@ -372,10 +396,49 @@ class GlassAppBar extends StatefulWidget implements PreferredSizeWidget {
   /// forum corners round up.
   final bool searchMode;
 
-  /// Builds the expanded-search content, mounted from 66dp
+  /// Builds custom expanded-search content, mounted from 66dp
   /// (ActionBar.java:1412, 1518) to the trailing edge and faded by the search
-  /// factor. The full search *field* port is deferred — this is its socket.
+  /// factor. When null (default) the socket mounts a [GlassAppBarSearchField]
+  /// wired to [searchController], [searchFocusNode], [searchHint],
+  /// [onSearchChanged], and [onSearchSubmitted].
   final WidgetBuilder? searchBuilder;
+
+  /// Controller of the built-in [GlassAppBarSearchField]; an internal one is
+  /// created when null. On every search open the text is reset
+  /// (`searchField.setText("")`, ActionBarMenuItem.java:993). Unused when
+  /// [searchBuilder] is set (custom content owns its own field).
+  final TextEditingController? searchController;
+
+  /// Focus node of the built-in [GlassAppBarSearchField]; an internal one is
+  /// created when null. Focus is requested on search open and dropped on
+  /// close (ActionBarMenuItem.java:994, 947). Unused when [searchBuilder]
+  /// is set.
+  final FocusNode? searchFocusNode;
+
+  /// Hint of the built-in search field, in
+  /// `actionBarDefaultSearchPlaceholder` (ActionBarMenuItem.java:1492).
+  final String? searchHint;
+
+  /// Text-change callback of the built-in search field
+  /// (`listener.onTextChanged`, ActionBarMenuItem.java:1536-1538).
+  final ValueChanged<String>? onSearchChanged;
+
+  /// Submit callback of the built-in search field — the IME search action
+  /// (`onSearchPressed`, ActionBarMenuItem.java:1509-1516).
+  final ValueChanged<String>? onSearchSubmitted;
+
+  /// Called when a tap on the leading slot should close search instead of
+  /// activating the slot — the Java back-click arm
+  /// `if (isSearchFieldVisible) { closeSearchField(); return; }`
+  /// (ActionBar.java:271-274). While [searchMode] is true and this is
+  /// non-null, the leading slot's own gestures are absorbed and a tap
+  /// invokes this instead (the host flips [searchMode] back to false).
+  final VoidCallback? onSearchClose;
+
+  /// Whether opening search focuses the field (and thus raises the
+  /// keyboard) — the `openKeyboard` flag of `toggleSearch`
+  /// (ActionBarMenuItem.java:896, 993-996).
+  final bool searchAutoFocus;
 
   /// When true, a [title] change plays the `setTitleAnimated` swap
   /// (ActionBar.java:1863-1927): the new title fades in from +-20dp while the
@@ -438,6 +501,10 @@ class GlassAppBar extends StatefulWidget implements PreferredSizeWidget {
 
   /// Key of the mounted search content.
   static const Key searchContentKey = Key('GlassAppBar.searchContent');
+
+  /// Key of the close-search tap overlay covering the leading slot while
+  /// [searchMode] is true and [onSearchClose] is set (ActionBar.java:271-274).
+  static const Key searchCloseKey = Key('GlassAppBar.searchClose');
 
   /// `getCurrentActionBarHeight()` (ActionBar.java:1855-1861): 48dp when the
   /// display is wider than tall, else 56dp.
@@ -572,6 +639,11 @@ class GlassAppBarState extends State<GlassAppBar>
   /// that first appearance snaps where Android animates.
   bool _menuAnimationsAllowed = false;
 
+  /// Internal controller/focus of the built-in search field, created lazily
+  /// when the caller supplies neither their own nor a [GlassAppBar.searchBuilder].
+  TextEditingController? _internalSearchController;
+  FocusNode? _internalSearchFocusNode;
+
   GlassAppBarPillGeometry? _lastGeometry;
   GlassRadii? _lastMainPillRadii;
 
@@ -604,6 +676,37 @@ class GlassAppBarState extends State<GlassAppBar>
   @visibleForTesting
   String? get debugOutgoingTitle => _outgoingTitle;
 
+  /// Whether the socket mounts the built-in [GlassAppBarSearchField]
+  /// (no custom [GlassAppBar.searchBuilder]).
+  bool get _usesBuiltInSearchField => widget.searchBuilder == null;
+
+  /// The search controller in effect: the caller's, else an internal one
+  /// when the built-in field is used, else null.
+  TextEditingController? get _searchController {
+    if (widget.searchController != null) {
+      return widget.searchController;
+    }
+    if (!_usesBuiltInSearchField) {
+      return null;
+    }
+    return _internalSearchController ??= TextEditingController();
+  }
+
+  /// The search focus node in effect (same resolution as [_searchController]).
+  FocusNode? get _searchFocusNode {
+    if (widget.searchFocusNode != null) {
+      return widget.searchFocusNode;
+    }
+    if (!_usesBuiltInSearchField) {
+      return null;
+    }
+    return _internalSearchFocusNode ??= FocusNode();
+  }
+
+  /// The search controller actually in use, for tests.
+  @visibleForTesting
+  TextEditingController? get debugSearchController => _searchController;
+
   @override
   void initState() {
     super.initState();
@@ -625,6 +728,11 @@ class GlassAppBarState extends State<GlassAppBar>
     _repaint = Listenable.merge(
       <Listenable>[_search, _titleSwap, _menuWidth, _hasMenu],
     );
+    if (widget.searchMode) {
+      // Mounted already-open: apply the open-path focus (the field element
+      // mounts this frame, so defer the request past it).
+      _handleSearchOpened(resetText: false);
+    }
   }
 
   @override
@@ -638,6 +746,13 @@ class GlassAppBarState extends State<GlassAppBar>
         duration: kGlassAppBarSearchDuration,
         curve: kGlassAppBarAnimatorCurve,
       );
+      if (widget.searchMode) {
+        _handleSearchOpened(resetText: true);
+      } else {
+        // Collapse: the field drops focus (`searchField.clearFocus()`,
+        // ActionBarMenuItem.java:947).
+        _searchFocusNode?.unfocus();
+      }
     }
     if (widget.title != oldWidget.title) {
       if (widget.animateTitleChange &&
@@ -663,7 +778,28 @@ class GlassAppBarState extends State<GlassAppBar>
     _titleSwap.dispose();
     _menuWidth.dispose();
     _hasMenu.dispose();
+    _internalSearchController?.dispose();
+    _internalSearchFocusNode?.dispose();
     super.dispose();
+  }
+
+  /// The open arm of `toggleSearch` (ActionBarMenuItem.java:993-996):
+  /// `searchField.setText("")`, then `requestFocus()` (+ keyboard when the
+  /// `openKeyboard` flag — [GlassAppBar.searchAutoFocus] — is set; in
+  /// Flutter focus and keyboard are one). The focus request is deferred a
+  /// frame so a field mounting in this build can receive it.
+  void _handleSearchOpened({required bool resetText}) {
+    if (resetText) {
+      _searchController?.clear();
+    }
+    if (!widget.searchAutoFocus) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.searchMode) {
+        _searchFocusNode?.requestFocus();
+      }
+    });
   }
 
   void _onTitleSwapStatus(AnimationStatus status) {
@@ -940,6 +1076,29 @@ class GlassAppBarState extends State<GlassAppBar>
     // 1393, 1510), +2dp glass shift (ActionBar.java:249-251).
     final Widget? leading = widget.leading;
     if (leading != null) {
+      Widget leadingChild = Transform.translate(
+        offset: const Offset(kGlassAppBarBackShiftX, 0.0),
+        child: Center(child: leading),
+      );
+      // While search is visible the back button closes search instead of
+      // performing its own action (`backButtonImageView` click,
+      // ActionBar.java:271-274): an overlay absorbs the slot's gestures and
+      // taps notify onSearchClose. Like the Java `isSearchFieldVisible`,
+      // this flips with searchMode immediately, not with the fade.
+      final VoidCallback? onSearchClose = widget.onSearchClose;
+      if (widget.searchMode && onSearchClose != null) {
+        leadingChild = Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            leadingChild,
+            GestureDetector(
+              key: GlassAppBar.searchCloseKey,
+              behavior: HitTestBehavior.opaque,
+              onTap: onSearchClose,
+            ),
+          ],
+        );
+      }
       children.add(Positioned(
         left: 0.0,
         top: statusBarTop,
@@ -947,10 +1106,7 @@ class GlassAppBarState extends State<GlassAppBar>
         height: barHeight,
         child: KeyedSubtree(
           key: GlassAppBar.leadingKey,
-          child: Transform.translate(
-            offset: const Offset(kGlassAppBarBackShiftX, 0.0),
-            child: Center(child: leading),
-          ),
+          child: leadingChild,
         ),
       ));
     }
@@ -1026,9 +1182,21 @@ class GlassAppBarState extends State<GlassAppBar>
     }
 
     // Expanded-search content socket: from 66dp to the trailing edge
-    // (ActionBar.java:1412, 1518), faded by the search factor.
+    // (ActionBar.java:1412, 1518), faded by the search factor. Custom
+    // searchBuilder content wins; otherwise the built-in search field
+    // (the ActionBarMenuItem search layout) mounts.
     final WidgetBuilder? searchBuilder = widget.searchBuilder;
-    if (searchBuilder != null && (widget.searchMode || searchFactor > 0)) {
+    if (widget.searchMode || searchFactor > 0) {
+      final Widget searchContent = searchBuilder != null
+          ? searchBuilder(context)
+          : GlassAppBarSearchField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              hintText: widget.searchHint,
+              onChanged: widget.onSearchChanged,
+              onSubmitted: widget.onSearchSubmitted,
+              resources: widget.resources,
+            );
       children.add(Positioned(
         left: kGlassAppBarSearchContentLeft,
         right: 0.0,
@@ -1040,7 +1208,7 @@ class GlassAppBarState extends State<GlassAppBar>
             opacity: searchFactor,
             child: KeyedSubtree(
               key: GlassAppBar.searchContentKey,
-              child: searchBuilder(context),
+              child: searchContent,
             ),
           ),
         ),
