@@ -307,7 +307,9 @@ class _TgMenuItemState extends State<TgMenuItem> {
                 color: _color(context, widget.iconColorKey),
                 size: kTgMenuItemIconSize,
               ),
-              child: Center(child: icon),
+              // widthFactor 1: the frame wraps the glyph instead of filling
+              // the 43dp indent.
+              child: Center(widthFactor: 1.0, child: icon),
             ),
           ),
         ),
