@@ -32,6 +32,17 @@ void main() {
     expect(find.byType(DialogCell), findsWidgets);
     expect(find.byType(GlassTabBar), findsOneWidget);
 
+    // The Calls tab icon is the bundled tab_calls.json composition driven
+    // through the telegram_ui_lottie adapter (loaded asynchronously, so it
+    // must be present after settle). Selecting the tab plays it.
+    expect(
+      find.byWidgetPredicate(
+          (Widget w) => w.runtimeType.toString() == 'Lottie'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Calls'));
+    await tester.pumpAndSettle();
+
     // Chat demo: composed ChatInput docked over the bubble list.
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
@@ -39,6 +50,25 @@ void main() {
     expect(find.byType(ChatInput), findsOneWidget);
     expect(find.byType(ChatInputBar), findsOneWidget);
     expect(find.byType(RecordSendButton), findsOneWidget);
+
+    // Emoji slot toggles the EmojiPanel (slides in under the input).
+    await tester.tap(find.byIcon(Icons.emoji_emotions_outlined));
+    await tester.pumpAndSettle();
+    expect(find.byType(EmojiPanel), findsOneWidget);
+    expect(find.byIcon(Icons.keyboard_alt_outlined), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.keyboard_alt_outlined));
+    await tester.pumpAndSettle();
+
+    // Attach slot opens the TgAttachSheet with the placeholder media grid;
+    // tapping the barrier dismisses it.
+    await tester.tap(find.byIcon(Icons.attach_file_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byType(TgAttachSheet), findsOneWidget);
+    // 'Gallery' shows twice: page header title + switcher tab label.
+    expect(find.text('Gallery'), findsNWidgets(2));
+    await tester.tapAt(const Offset(195, 60));
+    await tester.pumpAndSettle();
+    expect(find.byType(TgAttachSheet), findsNothing);
 
     // Glass playground.
     await tester.tap(find.text('Glass'));

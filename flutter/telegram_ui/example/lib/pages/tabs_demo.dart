@@ -1,8 +1,15 @@
 // DialogsActivity-style replica: TgScaffold + GlassAppBar('Telegram') +
 // a chat list of fake DialogCells + the floating GlassTabBar with five tabs.
+//
+// The Calls tab icon is the real Android composition
+// (TMessagesProj/src/main/res/raw/tab_calls.json, TabAnimation.CALLS in
+// GlassTabView.java) driven through the telegram_ui_lottie adapter — played
+// forward on select, in reverse on deselect. The other tabs stay static
+// Material glyphs.
 
 import 'package:flutter/material.dart';
 import 'package:telegram_ui/telegram_ui.dart';
+import 'package:telegram_ui_lottie/telegram_ui_lottie.dart';
 
 import '../main.dart';
 import '../widgets/gradient_avatar.dart';
@@ -45,7 +52,8 @@ class TabsDemoPage extends StatefulWidget {
   State<TabsDemoPage> createState() => _TabsDemoPageState();
 }
 
-class _TabsDemoPageState extends State<TabsDemoPage> {
+class _TabsDemoPageState extends State<TabsDemoPage>
+    with TickerProviderStateMixin {
   static const List<String> _tabTitles = <String>[
     'Telegram',
     'Contacts',
@@ -55,6 +63,35 @@ class _TabsDemoPageState extends State<TabsDemoPage> {
   ];
 
   int _tab = 0;
+
+  /// Animated Calls icon; null until the asset composition loads (the tab
+  /// shows a static glyph in the meantime).
+  TabIcon? _callsIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    loadLottieAssetTabIcon('assets/lottie/tab_calls.json', vsync: this)
+        .then((TabIcon icon) {
+      if (!mounted) {
+        _disposeIcon(icon);
+        return;
+      }
+      setState(() => _callsIcon = icon);
+    });
+  }
+
+  @override
+  void dispose() {
+    if (_callsIcon != null) {
+      _disposeIcon(_callsIcon!);
+    }
+    super.dispose();
+  }
+
+  static void _disposeIcon(TabIcon icon) {
+    ((icon as AnimatedTabIcon).controller as LottieTabAnimation).dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,10 +158,13 @@ class _TabsDemoPageState extends State<TabsDemoPage> {
             label: 'Contacts',
             icon: TabIcon.static(child: Icon(Icons.people_outline_rounded)),
           ),
-          const GlassTabBarItem(
+          GlassTabBarItem(
             id: 'calls',
             label: 'Calls',
-            icon: TabIcon.static(child: Icon(Icons.call_outlined)),
+            // The real Android tab_calls composition once loaded; a static
+            // glyph before that.
+            icon: _callsIcon ??
+                const TabIcon.static(child: Icon(Icons.call_outlined)),
             badgeCount: 2,
           ),
           const GlassTabBarItem(

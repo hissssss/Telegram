@@ -132,7 +132,7 @@ packages:
     source: hosted
     version: "6.1.0"
   lottie:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: lottie
       sha256: "58dda9eee3f1b1fb9d490b0161635cffe93022b3b8ca0687e3df33a53620ead2"
@@ -219,14 +219,7 @@ packages:
   telegram_ui:
     dependency: "direct main"
     description:
-      path: ".."
-      relative: true
-    source: path
-    version: "0.1.0"
-  telegram_ui_lottie:
-    dependency: "direct main"
-    description:
-      path: "../../telegram_ui_lottie"
+      path: "../telegram_ui"
       relative: true
     source: path
     version: "0.1.0"

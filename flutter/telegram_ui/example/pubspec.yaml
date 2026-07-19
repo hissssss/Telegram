@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   telegram_ui:
     path: ../
+  telegram_ui_lottie:
+    path: ../../telegram_ui_lottie
 
 dev_dependencies:
   flutter_test:
@@ -19,3 +21,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # tab_calls.json is TMessagesProj/src/main/res/raw/tab_calls.json (the
+    # GlassTabView TabAnimation.CALLS composition) copied verbatim.
+    - assets/lottie/tab_calls.json

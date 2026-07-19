@@ -6,6 +6,8 @@ system (777 int-keyed colors, `.attheme` compatible), and the core component
 catalog (glass tab bar, action bar, cells, sheets, bulletins).
 
 - `telegram_ui/` — the Flutter package (see `telegram_ui/example/` for the gallery app)
+- `telegram_ui_lottie/` — companion package: the `package:lottie` adapter for
+  animated tab icons (`telegram_ui` itself has no lottie dependency)
 - `tool/` — Python (stdlib-only) codegen: Java sources → `theme_tokens.json` → generated Dart
 - `docs/` — architecture and extracted design specs
 
@@ -56,6 +58,24 @@ Components resolve colors via `TelegramTheme.colorOf(context, TelegramColorKey.*
 (per-key rebuild granularity) and take an optional `TelegramResources?
 resources` override, mirroring the Android `resourcesProvider` convention.
 
+### Animated tab icons (telegram_ui_lottie)
+
+`TabIcon.animated` only drives the `TabAnimationController` playback contract
+(the `RLottieDrawable` projection used by `GlassTabView.checkPlayAnimation`);
+the `telegram_ui_lottie` companion package implements it with `package:lottie`:
+
+```yaml
+dependencies:
+  telegram_ui_lottie:
+    path: ../flutter/telegram_ui_lottie
+```
+
+```dart
+final TabIcon icon = await loadLottieAssetTabIcon(
+  'assets/lottie/tab_calls.json', vsync: this);  // plays forward on select,
+                                                 // reverse on deselect
+```
+
 ### Glass in ten lines
 
 ```dart
@@ -78,8 +98,10 @@ backend can run the refraction shader (Impeller required).
 
 ### Gallery
 
-`telegram_ui/example/` is the gallery app: a DialogsActivity-style tabs demo,
-a liquid-glass playground with live sliders, and a bundled-theme browser.
+`telegram_ui/example/` is the gallery app: a DialogsActivity-style tabs demo
+(with a lottie-animated Calls tab icon), a chat demo with the composed input
+bar, emoji panel, and attach sheet, a liquid-glass playground with live
+sliders, and a bundled-theme browser.
 
 <!-- TODO: capture a gallery screenshot on a device and embed it here as
      docs/gallery_screenshot.png — flutter_tester cannot render the liquid

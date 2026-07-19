@@ -1,9 +1,10 @@
-# Port status — 2026-07-18 (chat input composed + wired)
+# Port status — 2026-07-19 (attach sheet + emoji panel + lottie adapter wired)
 
-Tree state: **verified** — `flutter analyze` clean (package + example);
-`flutter test` 672/672 green + 2 example tests; `python3
-tool/tests/run_tests.py` 122/122 (Flutter 3.44.6, SDK expected at
-/home/user/flutter-sdk or any 3.44+ stable).
+Tree state: **verified** — `flutter analyze` clean (telegram_ui + example +
+telegram_ui_lottie); `flutter test` 731/731 green (telegram_ui) + 8
+(telegram_ui_lottie) + 2 (example); `python3 tool/tests/run_tests.py`
+122/122 (Flutter 3.44.6, SDK expected at /home/user/flutter-sdk or any
+3.44+ stable).
 
 ## Complete
 - Architecture + extracted specs (`docs/`), token codegen pipeline (`tool/`)
@@ -19,12 +20,31 @@ tool/tests/run_tests.py` 122/122 (Flutter 3.44.6, SDK expected at
   slide-to-cancel/lock/timer/round-video chrome + RecordOverlayController,
   and the composed ChatInput wiring all three through the CAEV state
   machine — typing -> send morph, hold-to-record, slide cancel, lock
-  persists hands-free, CANCEL/send resolve; capture stays callback slots)
-- Public API: `lib/telegram_ui.dart` umbrella + `lib/glass.dart` /
-  `lib/theme.dart` entry points (template Calculator + template test deleted)
-- Example gallery app (`example/`): tabs_demo, chat_demo (fake bubble list
-  over a busy gradient with the composed ChatInput, fake record clock and
-  synthesized amplitude feed), glass_playground, theme_browser
+  persists hands-free, CANCEL/send resolve; capture stays callback slots),
+  `attach/` (TgAttachSheet + showTgAttachSheet: ChatAttachAlert glass
+  chrome — spring open, cascade button reveal, tab switcher, action-bar
+  send pill with punched counter badge; gallery pipeline is a
+  `thumbnailsBuilder` slot), `emoji_panel/` (EmojiPanel chrome: type-tab
+  strip with pill indicator, category strip, search row, trending header;
+  emoji/GIF/sticker content pipelines are `WidgetBuilder` slots)
+- Companion package `flutter/telegram_ui_lottie/`: the `package:lottie`
+  adapter for animated tab icons — `LottieTabAnimation` implements the
+  `TabAnimationController` contract (RLottieDrawable frame semantics:
+  custom end frame, play-toward-end-frame direction), plus
+  `lottieTabIcon` / `loadLottieAssetTabIcon` conveniences. `telegram_ui`
+  itself still has zero lottie dependency.
+- Public API: `lib/telegram_ui.dart` umbrella (now incl. attach +
+  emoji_panel) + `lib/glass.dart` / `lib/theme.dart` entry points
+  (template Calculator + template test deleted)
+- Example gallery app (`example/`): tabs_demo (Calls tab icon is the real
+  `TMessagesProj/src/main/res/raw/tab_calls.json` composition copied to
+  `example/assets/lottie/` and driven through telegram_ui_lottie — forward
+  on select, reverse on deselect), chat_demo (fake bubble list over a busy
+  gradient with the composed ChatInput, fake record clock and synthesized
+  amplitude feed; the bar's emoji slot toggles an EmojiPanel with a
+  placeholder emoji grid that appends to the draft, the attach slot opens
+  TgAttachSheet with colored placeholder thumbnails + file/location stub
+  pages), glass_playground, theme_browser
 - Package metadata: real README (usage guide + licensing warning),
   example/README, CHANGELOG 0.1.0, LICENSE (GPLv2 + derivation notice)
 - Adversarial review pass applied (this session), notably:
