@@ -428,8 +428,12 @@ class TgTextFieldState extends State<TgTextField>
   }
 
   /// ACTION_DOWN records the x the active line expands from (ETB:723-730).
-  void _handleTapDown(TapDownDetails details) {
-    _lastTouchX = details.localPosition.dx;
+  ///
+  /// A raw pointer listener, not a tap recognizer: like the Java
+  /// `onTouchEvent` this must see every down, including the ones the
+  /// editor's own tap recognizer wins.
+  void _handlePointerDown(PointerDownEvent event) {
+    _lastTouchX = event.localPosition.dx;
   }
 
   Color _color(BuildContext context, int key) {
@@ -550,11 +554,18 @@ class TgTextFieldState extends State<TgTextField>
             ),
           );
 
-    return GestureDetector(
+    return Listener(
       behavior: HitTestBehavior.translucent,
-      onTapDown: _handleTapDown,
-      onTap: _effectiveFocusNode.requestFocus,
-      child: body,
+      onPointerDown: _handlePointerDown,
+      // Taps on the editor itself are focused by EditableText's own tap
+      // recognizer; this detector catches taps on the rest of the field
+      // (hint band, line gap, outlined padding) so the whole row focuses,
+      // like the Java view.
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _effectiveFocusNode.requestFocus,
+        child: body,
+      ),
     );
   }
 

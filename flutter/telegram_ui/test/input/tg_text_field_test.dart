@@ -15,7 +15,6 @@
 //    (LoginActivity.java:5384), label stays floated while filled;
 //  * controlled via TextEditingController; textField semantics.
 
-import 'package:flutter/services.dart' show TextInputAction;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:telegram_ui/src/foundation/tg_curves.dart';
@@ -225,6 +224,7 @@ void main() {
       expect(_state(tester).debugFocusNode.hasFocus, isTrue);
       expect(_state(tester).debugLineActive, isTrue);
 
+      await tester.pump(); // Consume the animation's zero-elapsed tick.
       await tester.pump(const Duration(milliseconds: 75));
       expect(_state(tester).debugLineActiveness, closeTo(0.5, 1e-9));
       final TgTextFieldUnderlinePainter painter = _underline(tester);
@@ -272,6 +272,7 @@ void main() {
       // The activeness at the flip is frozen (ETB:990-993).
       expect(_state(tester).debugFrozenLineActiveness, 1.0);
 
+      await tester.pump(); // Consume the animation's zero-elapsed tick.
       await tester.pump(const Duration(milliseconds: 75));
       expect(_state(tester).debugLineActiveness, closeTo(0.5, 1e-9));
       final TgTextFieldUnderlinePainter painter = _underline(tester);
@@ -311,13 +312,20 @@ void main() {
       expect(painter.lineActive, isFalse);
       expect(painter.errorLineColor,
           _day.color(TelegramColorKey.text_RedRegular));
-      // Base line snaps to 2dp immediately.
-      const Size box = Size(320, 30);
-      expect(painter.baseLineRect(box), const Rect.fromLTRB(0, 28, 320, 30));
 
-      // The blue line retreats over 150ms.
+      // The blue line retreats over 150ms; the resting line reappears at
+      // its snapped 2dp error thickness as soon as the activeness leaves 1
+      // (ETB:980-982, 1006).
+      const Size box = Size(320, 30);
+      await tester.pump(); // Consume the animation's zero-elapsed tick.
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(_underline(tester).lineActiveness, closeTo(0.5, 1e-9));
+      expect(_underline(tester).baseLineRect(box),
+          const Rect.fromLTRB(0, 28, 320, 30));
       await tester.pumpAndSettle();
       expect(_underline(tester).lineActiveness, 0.0);
+      expect(_underline(tester).baseLineRect(box),
+          const Rect.fromLTRB(0, 28, 320, 30));
 
       // Focusing in the error state does not re-activate.
       focusNode.unfocus();
@@ -363,6 +371,7 @@ void main() {
 
       focusNode.requestFocus();
       await tester.pump();
+      await tester.pump(); // Consume the animation's zero-elapsed tick.
       await tester.pump(const Duration(milliseconds: 100));
       final double progress = _state(tester).debugHeaderProgress;
       expect(progress, closeTo(TgCurves.easeOutQuint.transform(0.5), 1e-3));
@@ -481,7 +490,7 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await tester.pumpWidget(_host(child: const TgTextField(hintText: 'N')));
       expect(tester.getSemantics(find.byKey(TgTextField.fieldKey)),
-          containsSemantics(isTextField: true));
+          isSemantics(isTextField: true));
       handle.dispose();
     });
   });
@@ -544,6 +553,7 @@ void main() {
       ));
       focusNode.requestFocus();
       await tester.pump();
+      await tester.pump(); // Focus applies late in the first frame.
       TgOutlineContainer container =
           tester.widget<TgOutlineContainer>(find.byType(TgOutlineContainer));
       expect(container.selected, isTrue);
