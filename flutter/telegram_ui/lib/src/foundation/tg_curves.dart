@@ -1,6 +1,7 @@
 // Animation curves and the BoolFactor animator ported from
-// `java/org/telegram/ui/Components/CubicBezierInterpolator.java` (lines 11-14),
-// Android's `android.view.animation.DecelerateInterpolator`, and the
+// `java/org/telegram/ui/Components/CubicBezierInterpolator.java` (lines 11-22),
+// Android's `android.view.animation.DecelerateInterpolator` and
+// `android.view.animation.OvershootInterpolator`, and the
 // `BoolAnimator` / `AnimatedFloat` pattern
 // (me/vkryl/android/animator/BoolAnimator.java,
 //  org/telegram/ui/Components/AnimatedFloat.java).
@@ -32,12 +33,34 @@ abstract final class TgCurves {
   /// `EASE_IN = (0.42, 0, 1, 1)`.
   static const Cubic easeIn = Cubic(0.42, 0.0, 1.0, 1.0);
 
+  /// `EASE_BOTH = (0.42, 0, 0.58, 1)` (CubicBezierInterpolator.java:15) —
+  /// the CSS `ease-in-out` curve, e.g. the text-field underline activation
+  /// (EditTextBoldCursor.java:994-1022, 150ms).
+  static const Cubic easeBoth = Cubic(0.42, 0.0, 0.58, 1.0);
+
+  /// `EASE_OUT_BACK = (.34, 1.56, .64, 1)` (CubicBezierInterpolator.java:16)
+  /// — overshooting settle; identical control points to Flutter's
+  /// `Curves.easeOutBack`.
+  static const Cubic easeOutBack = Cubic(0.34, 1.56, 0.64, 1.0);
+
+  /// `StandardDecelerate = PathInterpolator(0, 0, 0, 1)`
+  /// (CubicBezierInterpolator.java:22) — the Material "standard decelerate";
+  /// drives the predictive-back peel (ActionBarLayout.java:1577-1583).
+  static const Cubic standardDecelerate = Cubic(0.0, 0.0, 0.0, 1.0);
+
   /// Android `new DecelerateInterpolator()` — `f(t) = 1 - (1 - t)^2`.
   /// Used e.g. for the tab selection pill (320ms DECELERATE).
   static const TgDecelerateCurve decelerate = TgDecelerateCurve();
 
   /// Android `new DecelerateInterpolator(2)` — `f(t) = 1 - (1 - t)^4`.
   static const TgDecelerateCurve decelerateFactor2 = TgDecelerateCurve(factor: 2.0);
+
+  /// Android `new OvershootInterpolator()` at the default tension 2.0.
+  /// Telegram instantiates other tensions inline — 1.02 for fragment preview
+  /// (ActionBarLayout.java:578), 1.2/2.0 in ButtonWithCounterView, 1.3 for
+  /// the spinner-dialog pop (AlertDialog.java:330) — via
+  /// `TgOvershootInterpolator(tension: t)`.
+  static const TgOvershootInterpolator overshoot = TgOvershootInterpolator();
 }
 
 /// Port of Android's `android.view.animation.DecelerateInterpolator`.
@@ -56,6 +79,30 @@ class TgDecelerateCurve extends Curve {
       return 1.0 - (1.0 - t) * (1.0 - t);
     }
     return 1.0 - math.pow(1.0 - t, 2.0 * factor).toDouble();
+  }
+}
+
+/// Port of Android's `android.view.animation.OvershootInterpolator`:
+///
+/// `f(t) = (t - 1)^2 * ((T + 1) * (t - 1) + T) + 1`
+///
+/// Starts at 0, flings past 1.0 (peak grows with [tension]) and settles back
+/// to exactly 1.0 at `t = 1`. Android's default tension is 2.0.
+///
+/// Named after the Android class because the attach sheet predates this
+/// foundation port with a file-local `TgOvershootCurve` of identical math
+/// (`components/attach/tg_attach_sheet.dart`) — consolidating the two is an
+/// integration-wave cleanup; new code uses this one.
+class TgOvershootInterpolator extends Curve {
+  const TgOvershootInterpolator({this.tension = 2.0});
+
+  /// Android's `mTension` constructor argument.
+  final double tension;
+
+  @override
+  double transformInternal(double t) {
+    final double u = t - 1.0;
+    return u * u * ((tension + 1.0) * u + tension) + 1.0;
   }
 }
 

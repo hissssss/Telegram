@@ -30,6 +30,38 @@ void main() {
       expect(TgCurves.easeIn.b, 0.0);
       expect(TgCurves.easeIn.c, 1.0);
       expect(TgCurves.easeIn.d, 1.0);
+
+      // CubicBezierInterpolator.java:15-16, 22.
+      expect(TgCurves.easeBoth.a, 0.42);
+      expect(TgCurves.easeBoth.b, 0.0);
+      expect(TgCurves.easeBoth.c, 0.58);
+      expect(TgCurves.easeBoth.d, 1.0);
+
+      expect(TgCurves.easeOutBack.a, 0.34);
+      expect(TgCurves.easeOutBack.b, 1.56);
+      expect(TgCurves.easeOutBack.c, 0.64);
+      expect(TgCurves.easeOutBack.d, 1.0);
+
+      expect(TgCurves.standardDecelerate.a, 0.0);
+      expect(TgCurves.standardDecelerate.b, 0.0);
+      expect(TgCurves.standardDecelerate.c, 0.0);
+      expect(TgCurves.standardDecelerate.d, 1.0);
+    });
+
+    test('EASE_BOTH matches Flutter easeInOut (identical control points)', () {
+      expect(TgCurves.easeBoth.a, Curves.easeInOut.a);
+      expect(TgCurves.easeBoth.b, Curves.easeInOut.b);
+      expect(TgCurves.easeBoth.c, Curves.easeInOut.c);
+      expect(TgCurves.easeBoth.d, Curves.easeInOut.d);
+    });
+
+    test('EASE_OUT_BACK overshoots past 1.0 mid-flight', () {
+      double peak = 0.0;
+      for (double t = 0.05; t < 1.0; t += 0.05) {
+        final double v = TgCurves.easeOutBack.transform(t);
+        if (v > peak) peak = v;
+      }
+      expect(peak, greaterThan(1.05));
     });
 
     test('all curves are exact at the endpoints', () {
@@ -38,8 +70,12 @@ void main() {
         TgCurves.easeOut,
         TgCurves.easeOutQuint,
         TgCurves.easeIn,
+        TgCurves.easeBoth,
+        TgCurves.easeOutBack,
+        TgCurves.standardDecelerate,
         TgCurves.decelerate,
         TgCurves.decelerateFactor2,
+        TgCurves.overshoot,
       ]) {
         expect(curve.transform(0.0), 0.0, reason: '$curve at 0');
         expect(curve.transform(1.0), 1.0, reason: '$curve at 1');
@@ -82,6 +118,39 @@ void main() {
       expect(TgCurves.decelerateFactor2.factor, 2.0);
       expect(TgCurves.decelerateFactor2.transform(0.5), closeTo(0.9375, 1e-12));
       expect(TgCurves.decelerateFactor2.transform(0.25), closeTo(1 - 0.31640625, 1e-12));
+    });
+
+    test('factor 1.5: f(t) = 1 - (1 - t)^3, exact (page transition curve)',
+        () {
+      const TgDecelerateCurve curve = TgDecelerateCurve(factor: 1.5);
+      expect(curve.transform(0.5), 0.875);
+      expect(curve.transform(0.25), closeTo(0.578125, 1e-12));
+    });
+  });
+
+  group('TgOvershootInterpolator (android OvershootInterpolator)', () {
+    test('default tension is 2.0 (the Android default)', () {
+      expect(TgCurves.overshoot.tension, 2.0);
+      expect(const TgOvershootInterpolator().tension, 2.0);
+    });
+
+    test('f(t) = (t-1)^2·((T+1)(t-1)+T)+1, exact spot values', () {
+      // T=2, t=0.5: 0.25·(3·(−0.5)+2)+1 = 1.125.
+      expect(TgCurves.overshoot.transform(0.5), closeTo(1.125, 1e-12));
+      // T=2, t=5/9 (the analytic peak u=−2T/(3(T+1))=−4/9):
+      // (16/81)·(2/3)+1 = 1+32/243.
+      expect(TgCurves.overshoot.transform(5 / 9), closeTo(1 + 32 / 243, 1e-12));
+      // T=1.02 (fragment preview, ActionBarLayout.java:578), t=0.5:
+      // 0.25·(2.02·(−0.5)+1.02)+1 = 1.0025.
+      expect(const TgOvershootInterpolator(tension: 1.02).transform(0.5),
+          closeTo(1.0025, 1e-9));
+    });
+
+    test('ends exactly at 1.0 for every tension', () {
+      for (final double tension in [1.02, 1.2, 1.3, 2.0]) {
+        expect(TgOvershootInterpolator(tension: tension).transform(1.0), 1.0,
+            reason: 'tension $tension');
+      }
     });
   });
 
