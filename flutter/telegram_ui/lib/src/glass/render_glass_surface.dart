@@ -225,6 +225,7 @@ class RenderGlassSurface extends RenderProxyBox {
        super(child);
 
   final LayerHandle<BackdropFilterLayer> _backdropLayer = LayerHandle<BackdropFilterLayer>();
+  Offset _paintOffset = Offset.zero;
   final LayerHandle<ClipRRectLayer> _frostedClipLayer = LayerHandle<ClipRRectLayer>();
   final LayerHandle<ClipRectLayer> _liquidClipLayer = LayerHandle<ClipRectLayer>();
   LiquidGlassUniforms? _uniforms;
@@ -417,6 +418,7 @@ class RenderGlassSurface extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
+    _paintOffset = offset;
     final GlassGeometry geometry = geometryFor(offset & size);
     final bool paintsDecoration = !geometry.boundsWithPadding.isEmpty;
     if (paintsDecoration) {
@@ -533,10 +535,11 @@ class RenderGlassSurface extends RenderProxyBox {
     );
   }
 
-  /// Liquid fill: uniforms packed in coverage-local physical px, then
-  /// [liquidBackdropFilter] as a grouped backdrop layer under a plain rect
-  /// clip inflated by `bleed = ceil(8 * thickness * intensity)` physical px
-  /// (the shader ray-length constant 8.0 — ARCHITECTURE.md section 3.2).
+  /// Liquid fill: uniforms packed in GLOBAL (device) physical px — see the
+  /// coordinate-space note inside — then [liquidBackdropFilter] as a grouped
+  /// backdrop layer under a plain rect clip inflated by
+  /// `bleed = ceil(8 * thickness * intensity)` physical px (the shader
+  /// ray-length constant 8.0 — ARCHITECTURE.md section 3.2).
   /// The SDF clips in-shader; there is deliberately NO rounded clip here.
   void _pushLiquidBackdrop(PaintingContext context, GlassGeometry geometry) {
     assert(
@@ -546,6 +549,32 @@ class RenderGlassSurface extends RenderProxyBox {
     );
     final double dpr = _devicePixelRatio;
     final Rect panel = geometry.boundsWithPadding;
+
+    // FlutterFragCoord() inside a backdrop runtime-effect filter is anchored
+    // to the DEVICE/scene coordinate space, not to this layer's clip rect:
+    // Impeller re-rasterizes the filter input so the fragment shader sees
+    // stable entity-space coordinates (engine
+    // impeller/entity/contents/filters/runtime_effect_filter_contents.cc,
+    // the ShouldRasterizeForRuntimeEffects branch — the synthesized snapshot
+    // coverage starts at the entity offset, and u_size is the input TEXTURE
+    // size, not the clip size). The SDF uniforms must therefore be packed in
+    // global physical pixels; packing them clip-locally displaces the glass
+    // by the clip origin (panel - bleed), which grows with
+    // thickness * intensity — the exact drift observed on-device.
+    //
+    // `getTransformTo(null)` maps this render object's local space to the
+    // root (logical px); the paint offset is already inside
+    // `geometry.boundsWithPadding`, so strip it before transforming. For
+    // rotated/scaled ancestors transformRect degrades to the bounding box —
+    // glass under non-axis-aligned transforms is unsupported (as on Android,
+    // where blur3 assumes axis-aligned chrome). NOTE: layer-level translations
+    // applied WITHOUT a repaint (e.g. scrolling this panel inside a viewport)
+    // stale these uniforms; chrome surfaces are static, and scrollable hosts
+    // must repaint on scroll (the Android ViewPositionWatcher analog).
+    final Rect globalPanel = MatrixUtils.transformRect(
+      getTransformTo(null),
+      panel.shift(-_paintOffset),
+    );
 
     // Preserve the Java `liquidThickness <= 0` sentinel; a positive logical
     // thickness converts to physical px for the packer.
@@ -564,10 +593,10 @@ class RenderGlassSurface extends RenderProxyBox {
     uniforms.update(
       coverageSize: Size(coverage.width * dpr, coverage.height * dpr),
       panelRect: Rect.fromLTWH(
-        (panel.left - coverage.left) * dpr,
-        (panel.top - coverage.top) * dpr,
-        panel.width * dpr,
-        panel.height * dpr,
+        globalPanel.left * dpr,
+        globalPanel.top * dpr,
+        globalPanel.width * dpr,
+        globalPanel.height * dpr,
       ),
       radii: _scaleRadii(geometry.shaderRadii, dpr),
       tint: _settings.tintColor,
