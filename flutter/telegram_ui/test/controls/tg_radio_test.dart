@@ -160,7 +160,7 @@ void main() {
       )));
       expect(
         tester.getSemantics(find.byType(TgRadio)),
-        containsSemantics(
+        isSemantics(
           isInMutuallyExclusiveGroup: true,
           hasCheckedState: true,
           isChecked: true,
@@ -278,7 +278,7 @@ void main() {
       )));
       expect(
         tester.getSemantics(find.byType(TgRadioCell)),
-        containsSemantics(
+        isSemantics(
           isInMutuallyExclusiveGroup: true,
           hasCheckedState: true,
           isChecked: true,

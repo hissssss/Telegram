@@ -260,7 +260,7 @@ void main() {
       )));
       expect(
         tester.getSemantics(find.byType(TgCheckBox)),
-        containsSemantics(
+        isSemantics(
           hasCheckedState: true,
           isChecked: false,
           hasEnabledState: true,
@@ -272,9 +272,10 @@ void main() {
       expect(changes, <bool>[true]);
 
       await tester.pumpWidget(_host(const TgCheckBox(checked: true)));
+      await tester.pumpAndSettle();
       expect(
         tester.getSemantics(find.byType(TgCheckBox)),
-        containsSemantics(hasCheckedState: true, isChecked: true),
+        isSemantics(hasCheckedState: true, isChecked: true),
       );
       handle.dispose();
     });

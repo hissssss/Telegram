@@ -26,6 +26,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/widgets.dart';
 
@@ -113,9 +114,10 @@ class TgSlideChooser extends StatefulWidget {
     this.textColorKey = TelegramColorKey.windowBackgroundWhiteGrayText,
     this.activeTextColorKey = TelegramColorKey.windowBackgroundWhiteBlueText,
     this.resources,
-  }) : assert(options.length > 0, 'options must not be empty');
+  });
 
-  /// Stop labels (`setOptions`, SlideChooseView.java:102-120).
+  /// Stop labels (`setOptions`, SlideChooseView.java:102-120). Must not be
+  /// empty.
   final List<String> options;
 
   /// Currently selected stop.
@@ -319,20 +321,29 @@ class TgSlideChooserState extends State<TgSlideChooser>
     final Color activeText = _color(context, widget.activeTextColorKey);
     final TextDirection textDirection = Directionality.of(context);
     final int count = widget.options.length;
+    final bool canIncrease = widget.selectedIndex < count - 1;
+    final bool canDecrease = widget.selectedIndex > 0;
     return Semantics(
       slider: true,
+      // The a11y description is the selected label
+      // (`getContentDescription`, SlideChooseView.java:91-94).
       value: widget.selectedIndex >= 0 && widget.selectedIndex < count
           ? widget.options[widget.selectedIndex]
           : null,
+      increasedValue:
+          canIncrease ? widget.options[widget.selectedIndex + 1] : null,
+      decreasedValue:
+          canDecrease ? widget.options[widget.selectedIndex - 1] : null,
       enabled: widget.onOptionSelected != null,
-      onIncrease: widget.selectedIndex < count - 1
-          ? () => _select(widget.selectedIndex + 1)
-          : null,
-      onDecrease: widget.selectedIndex > 0
-          ? () => _select(widget.selectedIndex - 1)
-          : null,
+      onIncrease:
+          canIncrease ? () => _select(widget.selectedIndex + 1) : null,
+      onDecrease:
+          canDecrease ? () => _select(widget.selectedIndex - 1) : null,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        // Java tracks the touch from ACTION_DOWN (SlideChooseView.java:
+        // 151-157); `DragStartBehavior.down` anchors the same way.
+        dragStartBehavior: DragStartBehavior.down,
         onTapUp: _onTapUp,
         onHorizontalDragStart: _onDragStart,
         onHorizontalDragUpdate: _onDragUpdate,

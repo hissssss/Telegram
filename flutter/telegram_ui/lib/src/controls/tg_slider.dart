@@ -32,6 +32,7 @@
 // kept LTR (the Java onDraw never mirrors).
 library;
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/widgets.dart';
 
@@ -529,6 +530,9 @@ class TgSliderState extends State<TgSlider> with TickerProviderStateMixin {
       onDecrease: () => _a11yScroll(false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        // Java measures the grab from ACTION_DOWN (SeekBarView.java:232-235);
+        // `DragStartBehavior.down` reports the same anchor.
+        dragStartBehavior: DragStartBehavior.down,
         onTapUp: _onTapUp,
         onHorizontalDragStart: _onDragStart,
         onHorizontalDragUpdate: _onDragUpdate,

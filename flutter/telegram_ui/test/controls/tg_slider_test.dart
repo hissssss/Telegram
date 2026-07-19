@@ -358,7 +358,7 @@ void main() {
       )));
       expect(
         tester.getSemantics(find.byType(TgSlider)),
-        containsSemantics(
+        isSemantics(
           isSlider: true,
           hasIncreaseAction: true,
           hasDecreaseAction: true,
