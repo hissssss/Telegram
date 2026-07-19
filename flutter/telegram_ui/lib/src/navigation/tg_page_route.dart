@@ -29,7 +29,6 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show protected;
 import 'package:flutter/gestures.dart' show HorizontalDragGestureRecognizer;
 import 'package:flutter/widgets.dart';
 
