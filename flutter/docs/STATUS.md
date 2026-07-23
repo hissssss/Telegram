@@ -1,10 +1,11 @@
-# Port status — 2026-07-19 (attach sheet + emoji panel + lottie adapter wired)
+# Port status — 2026-07-23 (PLAN_UIKIT waves 0–3 landed: full widget kit + gallery)
 
 Tree state: **verified** — `flutter analyze` clean (telegram_ui + example +
-telegram_ui_lottie); `flutter test` 731/731 green (telegram_ui) + 8
+telegram_ui_lottie); `flutter test` 1218/1218 green (telegram_ui) + 8
 (telegram_ui_lottie) + 2 (example); `python3 tool/tests/run_tests.py`
-122/122 (Flutter 3.44.6, SDK expected at /home/user/flutter-sdk or any
-3.44+ stable).
+122/122; grep-gate clean (no `material.dart` import in `lib/` outside
+`telegram_theme.dart`); (Flutter 3.44.6, SDK expected at
+/home/user/flutter-sdk or any 3.44+ stable).
 
 ## Complete
 - Architecture + extracted specs (`docs/`), token codegen pipeline (`tool/`)
@@ -27,6 +28,47 @@ telegram_ui_lottie); `flutter test` 731/731 green (telegram_ui) + 8
   `thumbnailsBuilder` slot), `emoji_panel/` (EmojiPanel chrome: type-tab
   strip with pill indicator, category strip, search row, trending header;
   emoji/GIF/sticker content pipelines are `WidgetBuilder` slots)
+- **PLAN_UIKIT.md build — COMPLETE (all waves).** Every MUST (M0–M12) and
+  every SHOULD (S1–S7, including the S7 stretch) component landed, exported,
+  Java-cited, and tested per the §1.3 blanket contract; nothing re-triaged.
+  Component table (lib/src/ directory → contents → source):
+  - `foundation/` adds: `TgTextStyles` (M0, binary w400/rmedium-w500 type
+    roles), `TgMotion` + `TgCurves` additions (M0b, duration/dim/curve
+    dictionary), and `progress/TgCircularProgress` (M0c,
+    CircularProgressDrawable segment math)
+  - `buttons/`: `TgButton` (M1, ButtonWithCounterView — filled/text/neutral,
+    counter pill + digit roll, loading, subText, timer), `TgDialogButton`
+    (M2, AlertDialog button row convention), `TgFab` (S5,
+    FragmentFloatingButton)
+  - `dialog/`: `TgAlertDialog` + `showTgAlertDialog` + `TgAlertDialogCell`
+    (M3, AlertDialog message/items/buttons incl. vertical overflow)
+  - `menu/`: `TgPopupMenu` + `showTgPopupMenu` + `TgMenuItem` + `TgMenuGap`
+    (M4, ActionBarPopupWindow + ActionBarMenuSubItem, cascade reveal)
+  - `controls/`: `TgCheckBox` (M5, CheckBoxBase, 3 ring recipes), `TgRadio`
+    + `TgRadioCell` (M6, RadioButton/RadioCell), `TgSlider` (M7,
+    SeekBarView — steps/two-sided/buffered), `TgSlideChooser` (S7,
+    SlideChooseView)
+  - `avatar/`: `TgAvatar` + `TgAvatarColors` (M8, AvatarDrawable — 7
+    gradient pairs, initials, saved/archived)
+  - `progress/`: `TgRadialProgress` (M9, RadialProgressView state machine),
+    `TgLinearProgress` (M10, LineProgressView)
+  - `input/`: `TgTextField` (M11, EditTextBoldCursor — underline/floating
+    header/error) + `TgOutlineContainer` (OutlineTextContainerView spring
+    outline)
+  - `navigation/`: `TgPageRoute` + `TgPageTransition` +
+    `TgPageTransitionsBuilder` (M12, ActionBarLayout push/pop + swipe-back
+    physics)
+  - `hint/`: `TgHint` (S1, HintView2 bubble + arrow)
+  - `loading/`: `TgFlickerLoading` (S2, FlickerLoadingView skeleton sweep);
+    `empty/`: `TgEmptyView` (S3, StickerEmptyView)
+  - `chips/`: `TgChip` (S4, GroupCreateSpan delete-morph pill)
+  - `components/bulletin/`: `Bulletin.showUndo` + `BulletinCountdown` (S6,
+    the Bulletin undo/countdown variant)
+  All exported from the `lib/telegram_ui.dart` umbrella; ARCHITECTURE.md §6
+  carries the per-component constant summaries. Example gallery gained a
+  fifth page, `widgets_demo.dart` (every new control at least once + a
+  TgPageRoute detail-page push), and `tabs_demo`/`theme_browser` now use
+  `TgAvatar` (the local `gradient_avatar.dart` helper was deleted).
 - Companion package `flutter/telegram_ui_lottie/`: the `package:lottie`
   adapter for animated tab icons — `LottieTabAnimation` implements the
   `TabAnimationController` contract (RLottieDrawable frame semantics:
@@ -44,7 +86,8 @@ telegram_ui_lottie); `flutter test` 731/731 green (telegram_ui) + 8
   amplitude feed; the bar's emoji slot toggles an EmojiPanel with a
   placeholder emoji grid that appends to the draft, the attach slot opens
   TgAttachSheet with colored placeholder thumbnails + file/location stub
-  pages), glass_playground, theme_browser
+  pages), glass_playground, widgets_demo (the PLAN_UIKIT catalog page),
+  theme_browser
 - Package metadata: real README (usage guide + licensing warning),
   example/README, CHANGELOG 0.1.0, LICENSE (GPLv2 + derivation notice)
 - Adversarial review pass applied (this session), notably:
@@ -72,6 +115,11 @@ telegram_ui_lottie); `flutter test` 731/731 green (telegram_ui) + 8
 ## Remaining
 - Gallery screenshot for flutter/README.md (needs a device capture —
   flutter_tester cannot render the liquid tier).
+- PLAN_UIKIT §5 deliberate deferrals (unchanged): date/time/number pickers,
+  nav drawer, reactions strip, rating bar, standalone AnimatedTextView,
+  FragmentContextView banner, and the NICE dialog/menu/slider/text-field
+  extras (blurred dialog bg, `fitItems`, nested swipe-back submenus, slider
+  timestamps, TgLinearProgress shimmer, animated hint swap).
 - ~~Premium counter-badge variant~~ DONE: `CounterBadgePainter`
   `premium: true` now draws the GlassTabView.java:196-206 pass — the
   4-stop `premiumGradient1..4` main-gradient round rect (the

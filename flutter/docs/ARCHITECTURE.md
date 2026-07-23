@@ -284,6 +284,32 @@ Each component doc-comments its Java source path and mirrors constants file-for-
 | **TgScaffold** | — | installs GlassBackdropScope, `extendBodyBehindBars`, injects bottom inset `navBar + 72dp` |
 | **Theme runtime + AtthemeCodec** | §4 | — |
 
+UIKit wave (PLAN_UIKIT.md M0–M12 / S1–S7; detailed numbers live in `spec_forms.md`, `spec_dialog_menu.md`, `spec_primitives.md`, `spec_typography_motion.md`). New directories: `foundation/` additions plus `avatar/`, `buttons/`, `chips/`, `controls/`, `dialog/`, `empty/`, `hint/`, `input/`, `loading/`, `menu/`, `navigation/`, `progress/`:
+
+| Component | Port of | Spec summary (extracted numbers) |
+|---|---|---|
+| **TgTextStyles / TgMotion / TgCurves adds** | type + motion census over the ported Java (`AndroidUtilities.bold()`, ActionBarLayout/BottomSheet/AlertDialog/ActionBarPopupWindow durations) | foundation type roles (rmedium = w500, never w700) and the shared duration/dim/curve dictionary every component consumes |
+| **TgButton** | `ui/Stories/recorder/ButtonWithCounterView.java` | 48dp filled/text/neutral; press scale 0.02 (80/350ms); loading swap 320ms; counter pill 18dp with digit roll 250ms; subText; resend timer |
+| **TgFab** | `ui/Components/FragmentFloatingButton.java` | 56dp (48 compact); hide = slide 40dp + scale 0.4, 380ms; press scale 0.1 |
+| **TgDialogButton** | `ui/ActionBar/AlertDialog.java` button convention | 40dp height, min width 64dp, ripple alpha 0x19, loading spinner slide 6dp / 320ms EASE_OUT_QUINT |
+| **TgAlertDialog** | `ui/ActionBar/AlertDialog.java` | radius 20dp, max width 356dp, 52dp button row, 48dp item rows (icon indent 56dp), vertical-buttons overflow, barrier 0x80000000 |
+| **TgPopupMenu + TgMenuItem** | `ui/ActionBar/ActionBarPopupWindow.java` + `ActionBarMenuSubItem.java` | corner 12dp, shadow pad 8dp, cascade item reveal, 48dp rows (icon indent 43dp, check 34dp), 8dp gaps |
+| **TgCheckBox** | `ui/Components/CheckBoxBase.java` | 21dp, 200ms draw-on check; plain / settingsRow / avatarOverlay ring recipes |
+| **TgRadio + TgRadioCell** | `ui/Components/RadioButton.java` + `ui/Cells/RadioCell.java` | 16dp ring 2dp stroke, 200ms accelerate-decelerate collapse/expand; 50dp cell row |
+| **TgSlider** | `ui/Components/SeekBarView.java` | 38dp tall, 3dp track, thumb 6→8dp pressed (120ms); steps, two-sided, buffered, value transition 225ms |
+| **TgSlideChooser** | `ui/Components/SlideChooseView.java` | 74dp dot strip, 6dp dots, halo 12dp, snap threshold 0.35 |
+| **TgAvatar** | `ui/Components/AvatarDrawable.java` | 7 gradient pairs by `abs(id % 7)`, ZWNJ-joined initials, saved/archived variants, peer-color mapping |
+| **TgRadialProgress** | `ui/Components/RadialProgressView.java` | 40dp arc (dialog 32dp), 3dp stroke; rotation 2000ms, rising 500ms, sweep 4°→270°, toCircle 220/400ms |
+| **TgLinearProgress** | `ui/Components/LineProgressView.java` | 4dp bar, 300ms forward-only progress ease, 200ms fade at completion |
+| **TgCircularProgress** | `ui/Components/CircularProgressDrawable.java` | segment-pair spinner math (`getSegments`), foundation-owned |
+| **TgTextField + TgOutlineContainer** | `ui/Components/EditTextBoldCursor.java` + `OutlineTextContainerView.java` | underline 1/2dp with touch-anchored activation (150ms), floating header 200ms rise 22dp scale 0.7; outline spring 500/1.0, label float scale 0.75 |
+| **TgPageRoute** | `ui/ActionBar/ActionBarLayout.java` | push/pop 150ms slide 48dp + fade; swipe-back: start ≥0.4cm, commit < w/3 or fling 3500 physical px/s, commit ≤200ms / cancel ≤320ms, scrim 120·0.8 + 4dp edge shadow |
+| **TgHint** | `ui/Stories/recorder/HintView2.java` | bubble radius 8dp + 14dp arrow (7×6), show 350ms scale 0.75, auto-hide 3500ms |
+| **TgFlickerLoading** | `ui/Components/FlickerLoadingView.java` | dialog/users skeleton rows (73/64dp), 600dp gradient sweeping 400ms/viewport |
+| **TgEmptyView** | `ui/Components/StickerEmptyView.java` | 117dp image slot, title/subtitle/button stack, 150ms fade + scale 0.8 (progress 0.5) crossfade to spinner |
+| **TgChip** | `ui/Components/GroupCreateSpan.java` | 32/28dp pill, avatar → rotating-x delete morph 120ms, name blend to selection color |
+| **Bulletin undo variant** | `ui/Components/Bulletin.java` (UndoButton + timer layout) | 18dp countdown ring (2dp stroke) with 150ms digit swap, 5000ms commit-on-close |
+
 ---
 
 ## 7. Testing and verification strategy

@@ -122,23 +122,31 @@ void main() {
     expect(find.byType(TgChip), findsWidgets);
 
     // Push the detail page through TgPageRoute and swipe-free pop via the
-    // Back button (150ms slide+fade each way).
-    await scrollTo(find.text('Push detail page'));
-    await tester.ensureVisible(find.text('Push detail page'));
+    // Back button (150ms slide+fade each way). TgButton paints its label
+    // itself (no Text widget), so match on the widget's `text` field.
+    final Finder pushButton = find.byWidgetPredicate(
+      (Widget w) => w is TgButton && w.text == 'Push detail page',
+    );
+    await scrollTo(pushButton);
+    await tester.ensureVisible(pushButton);
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('Push detail page'));
+    await tester.tap(pushButton);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
+    // 'Detail page' is a HeaderCell (a real Text widget).
     expect(find.text('Detail page'), findsOneWidget);
-    await tester.tap(find.text('Back'));
+    await tester.tap(find.byWidgetPredicate(
+      (Widget w) => w is TgButton && w.text == 'Back',
+    ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Detail page'), findsNothing);
 
-    // Theme browser (the IndexedStack mutes the widgets page's tickers, so
-    // pumpAndSettle is safe again).
+    // Theme browser. The widgets page's self-ticking painters stay mounted
+    // (and ticking) inside the IndexedStack, so fixed pumps here too.
     await tester.tap(find.text('Themes'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(ThemeBrowserPage), findsOneWidget);
     expect(find.text('Bundled themes'), findsOneWidget);
     expect(find.text('Apply'), findsNWidgets(5));
