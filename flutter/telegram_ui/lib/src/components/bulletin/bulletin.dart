@@ -47,6 +47,43 @@
 //   press scale (ScaleStateListAnimator, Bulletin.java:806), the alternative
 //   255/175ms DefaultTransition (Bulletin.java:1056-1119), and the blur-out
 //   variant (Bulletin.java:1200).
+//
+// Undo variant — the `ui/Components/UndoView.java` countdown recipe,
+// expressed as a Bulletin layout variant (kit-lens audit #19), not a
+// separate component:
+//
+// - countdown circle: an 18dp ring (`rect` spans dp(15)..dp(15+18),
+//   UndoView.java:319) stroked at 2dp with round caps in `undo_infoColor`
+//   (UndoView.java:321-325); the arc starts at 12 o'clock and depletes
+//   counter-clockwise, sweep `-360 * (timeLeft / 5000f)` — the divisor is
+//   the literal 5000 regardless of the starting timeLeft
+//   (UndoView.java:1694), so longer countdowns clamp to a full ring until
+//   5s remain and shorter ones start partially depleted;
+// - seconds text: `max(1, ceil(timeLeft / 1000))` (UndoView.java:1645-1649)
+//   drawn centered in the ring at 12dp Roboto Medium `undo_infoColor`
+//   (UndoView.java:327-330). A change of digit cross-fades over 150ms
+//   (`timeReplaceProgress += 16f / 150f` per 16ms frame,
+//   UndoView.java:1659-1665): the old digit slides 10dp down fading out,
+//   the new one slides in from 10dp above fading in
+//   (UndoView.java:1670-1690);
+// - the countdown starts at show and ticks through the enter transition
+//   (`lastUpdateTime = SystemClock.elapsedRealtime()`, UndoView.java:485);
+//   default `timeLeft = 5000` ms (UndoView.java:482). When it empties the
+//   view hides itself (`timeLeft <= 0 -> hide(true, ...)`,
+//   UndoView.java:1697-1703);
+// - commit/undo semantics (`hide(boolean apply, ...)`,
+//   UndoView.java:384-403): apply=true (countdown expiry, replacement, any
+//   non-undo dismissal) runs the action runnable — [onCommit] here; the
+//   undo button hides with apply=false (UndoView.java:300-305), running the
+//   cancel runnable — [onUndo];
+// - undo button text: 14dp Roboto Medium `undo_cancelColor`
+//   (UndoView.java:312-316) — identical to Bulletin's own UndoButton, so
+//   the variant reuses the standard trailing action;
+// - divergences: the ring is centered in Bulletin's standard 56x48 leading
+//   frame instead of UndoView's absolute (15,15) placement; the enter/exit
+//   motion is Bulletin's spring, not UndoView's 250ms translate
+//   (UndoView.java:410-415); the `chats_undo` arrow icon next to the undo
+//   label (UndoView.java:307-310) is not ported.
 library;
 
 import 'dart:async';
@@ -55,6 +92,7 @@ import 'dart:math' as math;
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../foundation/tg_text_styles.dart';
 import '../../glass/geometry.dart';
 import '../../glass/glass_panel.dart';
 import '../../glass/presets.dart';
@@ -115,6 +153,32 @@ const double kBulletinSwipeThresholdFraction = 1 / 3;
 /// (Bulletin.java:648, 655).
 const Duration kBulletinSwipeSettleDuration = Duration(milliseconds: 200);
 
+/// Default undo countdown: `timeLeft = 5000` ms (UndoView.java:482).
+const Duration kBulletinUndoDuration = Duration(milliseconds: 5000);
+
+/// Countdown ring diameter: 18dp (`rect` spans dp(15)..dp(15 + 18),
+/// UndoView.java:319).
+const double kBulletinCountdownSize = 18.0;
+
+/// Countdown ring stroke width: 2dp (UndoView.java:323).
+const double kBulletinCountdownStroke = 2.0;
+
+/// Countdown seconds text size: 12dp (UndoView.java:328).
+const double kBulletinCountdownTextSize = 12.0;
+
+/// The arc-sweep divisor: the Java draws `-360 * (timeLeft / 5000.0f)` with
+/// a literal 5000 regardless of the starting timeLeft (UndoView.java:1694),
+/// so the ring only depletes over the final 5 seconds.
+const int kBulletinCountdownSweepDivisorMs = 5000;
+
+/// Digit-change cross-fade: 150ms (`timeReplaceProgress += 16f / 150f` per
+/// 16ms frame, UndoView.java:1660).
+const Duration kBulletinCountdownDigitSwapDuration =
+    Duration(milliseconds: 150);
+
+/// Digit-change vertical travel: 10dp (UndoView.java:1673, 1684).
+const double kBulletinCountdownDigitSlide = 10.0;
+
 /// The enter/exit spring: dampingRatio 0.8, stiffness 400, mass 1
 /// (Bulletin.java:1121-1172; DynamicAnimation's implicit unit mass) —
 /// damping coefficient `2 * 0.8 * sqrt(400 * 1) = 32`.
@@ -160,6 +224,9 @@ abstract final class Bulletin {
 
   /// Key on the trailing action button.
   static const Key actionKey = ValueKey<String>('Bulletin.action');
+
+  /// Key on the undo variant's leading countdown circle.
+  static const Key countdownKey = ValueKey<String>('Bulletin.countdown');
 
   static BulletinController? _visible;
 
@@ -230,6 +297,79 @@ abstract final class Bulletin {
     controller._entry = entry;
     _visible = controller;
     overlay.insert(entry);
+    return controller;
+  }
+
+  /// Shows the undo variant — the `ui/Components/UndoView.java` countdown
+  /// recipe as a Bulletin layout: a leading [BulletinCountdown] (seconds
+  /// text inside a depleting 2dp ring) plus a trailing undo action.
+  ///
+  /// - [countdown]: the `timeLeft` budget, default 5000ms
+  ///   (UndoView.java:482). The countdown starts immediately and ticks
+  ///   through the enter transition (UndoView.java:485); when it empties the
+  ///   bulletin hides itself (`timeLeft <= 0 -> hide(true, ...)`,
+  ///   UndoView.java:1697-1703).
+  /// - [undoText]/[onUndo]: the trailing button — 14dp Roboto Medium
+  ///   `undo_cancelColor` (UndoView.java:312-316). Tapping runs [onUndo] and
+  ///   hides without committing (`hide(false, 1)` runs the cancel runnable,
+  ///   UndoView.java:300-305, 397-403). The label is a parameter because the
+  ///   package carries no localization (Java: `R.string.UndoNoCaps`).
+  /// - [onCommit]: the deferred action, run once the bulletin has fully left
+  ///   for any reason other than undo — countdown expiry, swipe-dismiss,
+  ///   replacement by another bulletin, or a programmatic [hideVisible] /
+  ///   [BulletinController.hide] (`apply == true` runs the action runnable,
+  ///   UndoView.java:391-396).
+  ///
+  /// Remaining parameters match [show].
+  static BulletinController showUndo(
+    BuildContext context, {
+    required String text,
+    required String undoText,
+    VoidCallback? onUndo,
+    VoidCallback? onCommit,
+    Duration countdown = kBulletinUndoDuration,
+    double bottomOffset = 0.0,
+    EdgeInsetsGeometry margin = EdgeInsets.zero,
+    bool useGlass = false,
+    TelegramResources? resources,
+  }) {
+    BulletinController? controller;
+    bool undone = false;
+    controller = show(
+      context,
+      text: text,
+      leading: BulletinCountdown(
+        key: countdownKey,
+        duration: countdown,
+        resources: resources,
+        // `timeLeft <= 0 -> hide(true, hideAnimationType)`
+        // (UndoView.java:1700-1703).
+        onExpired: () => controller!.hide(),
+      ),
+      actionText: undoText,
+      onAction: () {
+        // `hide(false, 1)` — apply=false runs the cancel runnable and skips
+        // the action runnable (UndoView.java:300-305, 391-403); the base
+        // trailing action already hides afterwards.
+        undone = true;
+        onUndo?.call();
+      },
+      // The countdown drives dismissal, not the standard auto-hide timer.
+      duration: null,
+      bottomOffset: bottomOffset,
+      margin: margin,
+      useGlass: useGlass,
+      resources: resources,
+    );
+    if (onCommit != null) {
+      // Any dismissal that is not the undo press commits the deferred
+      // action (`apply == true`, UndoView.java:391-396).
+      controller.closed.then((_) {
+        if (!undone) {
+          onCommit();
+        }
+      });
+    }
     return controller;
   }
 }
@@ -634,5 +774,252 @@ class _BulletinHostState extends State<_BulletinHost>
         child: banner,
       ),
     );
+  }
+}
+
+/// The undo countdown circle: seconds text inside a depleting 18dp / 2dp
+/// ring, `undo_infoColor` (UndoView.java:319-330, 1644-1694).
+///
+/// Self-contained: its clock starts on mount (the Java
+/// `lastUpdateTime = SystemClock.elapsedRealtime()` at show,
+/// UndoView.java:485) and runs [onExpired] once when [duration] has fully
+/// elapsed (`timeLeft <= 0`, UndoView.java:1700-1703). [Bulletin.showUndo]
+/// mounts one in the standard 56x48 leading frame and wires [onExpired] to
+/// hide the bulletin.
+class BulletinCountdown extends StatefulWidget {
+  /// Creates the countdown circle.
+  const BulletinCountdown({
+    super.key,
+    this.duration = kBulletinUndoDuration,
+    this.onExpired,
+    this.resources,
+  });
+
+  /// Total countdown budget — the Java `timeLeft` (default 5000ms,
+  /// UndoView.java:482).
+  final Duration duration;
+
+  /// Runs once when the countdown empties (UndoView.java:1700-1703).
+  final VoidCallback? onExpired;
+
+  /// Explicit resources override; otherwise keys resolve through
+  /// [TelegramTheme.colorOf].
+  final TelegramResources? resources;
+
+  @override
+  State<BulletinCountdown> createState() => _BulletinCountdownState();
+}
+
+class _BulletinCountdownState extends State<BulletinCountdown>
+    with TickerProviderStateMixin {
+  /// Remaining fraction of [BulletinCountdown.duration], 1 -> 0 linear (the
+  /// Java `timeLeft -= dt` wall-clock decrement, UndoView.java:1697-1699).
+  late final AnimationController _remaining = AnimationController(
+    vsync: this,
+    duration: widget.duration,
+    value: 1.0,
+  );
+
+  /// Digit-change cross-fade, 0 -> 1 over 150ms (`timeReplaceProgress`,
+  /// UndoView.java:1659-1665); rests at 1 (no swap in flight).
+  late final AnimationController _swap = AnimationController(
+    vsync: this,
+    duration: kBulletinCountdownDigitSwapDuration,
+    value: 1.0,
+  );
+
+  late int _seconds =
+      _secondsOfMs(widget.duration.inMilliseconds.toDouble());
+  int? _outSeconds;
+
+  /// `newSeconds = timeLeft > 0 ? ceil(timeLeft / 1000) : 0`, displayed as
+  /// `max(1, newSeconds)` (UndoView.java:1645-1649) — the digit never drops
+  /// below 1.
+  static int _secondsOfMs(double ms) {
+    final int raw = ms > 0 ? (ms / 1000.0).ceil() : 0;
+    return math.max(1, raw);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Registered before the AnimatedBuilder subscribes, so the digit state
+    // is current when the frame repaints.
+    _remaining.addListener(_onTick);
+    // The countdown starts at show and ticks through the enter transition
+    // (UndoView.java:485). The TickerFuture resolves only on natural
+    // completion — a dispose mid-flight never fires onExpired.
+    _remaining.reverse(from: 1.0).whenComplete(_onExpired);
+  }
+
+  void _onTick() {
+    final int seconds = _secondsOfMs(
+        _remaining.value * widget.duration.inMilliseconds);
+    if (seconds != _seconds) {
+      // Digit changed: cross-fade old -> new (UndoView.java:1647-1656).
+      _outSeconds = _seconds;
+      _seconds = seconds;
+      _swap.forward(from: 0.0);
+    }
+  }
+
+  void _onExpired() {
+    if (mounted) {
+      widget.onExpired?.call();
+    }
+  }
+
+  @override
+  void dispose() {
+    _remaining.dispose();
+    _swap.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Ring and digits both use `undo_infoColor` (UndoView.java:325, 330).
+    final TelegramResources? resources = widget.resources;
+    final Color color = resources != null
+        ? resources.getColor(TelegramColorKey.undo_infoColor)
+        : TelegramTheme.colorOf(context, TelegramColorKey.undo_infoColor);
+    final TextDirection textDirection = Directionality.of(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge(<Listenable>[_remaining, _swap]),
+      builder: (BuildContext context, Widget? child) {
+        return CustomPaint(
+          size: const Size.square(kBulletinCountdownSize),
+          painter: BulletinCountdownPainter(
+            ringFraction: math.min(
+              1.0,
+              _remaining.value *
+                  widget.duration.inMilliseconds /
+                  kBulletinCountdownSweepDivisorMs,
+            ),
+            seconds: _seconds,
+            outSeconds: _outSeconds,
+            swapProgress: _swap.value,
+            color: color,
+            textDirection: textDirection,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Paints one frame of the undo countdown (UndoView.java:1644-1694): the
+/// current [seconds] digit (plus the outgoing digit mid-swap) and the
+/// depleting ring.
+class BulletinCountdownPainter extends CustomPainter {
+  /// Creates the painter for one frame.
+  BulletinCountdownPainter({
+    required this.ringFraction,
+    required this.seconds,
+    required this.outSeconds,
+    required this.swapProgress,
+    required this.color,
+    required this.textDirection,
+  });
+
+  /// Remaining sweep of the ring, 0..1 — the Java `timeLeft / 5000f`
+  /// clamped to a full circle (UndoView.java:1694).
+  final double ringFraction;
+
+  /// The displayed digit, `max(1, ceil(timeLeft / 1000))`
+  /// (UndoView.java:1645-1649).
+  final int seconds;
+
+  /// The previous digit while a swap is in flight (`timeLayoutOut`,
+  /// UndoView.java:1651-1652); ignored once [swapProgress] reaches 1.
+  final int? outSeconds;
+
+  /// Digit cross-fade progress 0..1 (`timeReplaceProgress`,
+  /// UndoView.java:1659-1690).
+  final double swapProgress;
+
+  /// `undo_infoColor` for both ring and digits (UndoView.java:325, 330).
+  final Color color;
+
+  /// Ambient directionality for the digit text layout.
+  final TextDirection textDirection;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Outgoing digit: slides 10dp down, fading out
+    // (UndoView.java:1670-1677).
+    final int? outSeconds = this.outSeconds;
+    if (outSeconds != null && swapProgress < 1.0) {
+      _paintDigit(
+        canvas,
+        size,
+        outSeconds,
+        opacity: 1.0 - swapProgress,
+        dy: kBulletinCountdownDigitSlide * swapProgress,
+      );
+    }
+    // Current digit: slides in from 10dp above, fading in
+    // (UndoView.java:1679-1690).
+    _paintDigit(
+      canvas,
+      size,
+      seconds,
+      opacity: math.min(1.0, swapProgress),
+      dy: -kBulletinCountdownDigitSlide * (1.0 - swapProgress),
+    );
+    // 2dp round-cap stroke from 12 o'clock, sweeping counter-clockwise by
+    // the remaining fraction (UndoView.java:321-324, 1694). Like the Java
+    // (stroke centered on the 18dp rect), the stroke overhangs the bounds
+    // by 1dp — the leading frame does not clip.
+    final Paint ring = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = kBulletinCountdownStroke
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    canvas.drawArc(
+      Offset.zero & size,
+      -math.pi / 2,
+      -2.0 * math.pi * ringFraction,
+      false,
+      ring,
+    );
+  }
+
+  void _paintDigit(
+    Canvas canvas,
+    Size size,
+    int value, {
+    required double opacity,
+    required double dy,
+  }) {
+    // 12dp Roboto Medium (`textPaint`, UndoView.java:327-329) — the
+    // microEmphasis role of the scale.
+    final TextPainter painter = TextPainter(
+      text: TextSpan(
+        text: '$value',
+        style: TgTextStyles.microEmphasis.copyWith(
+          color: color.withValues(alpha: color.a * opacity),
+        ),
+      ),
+      textDirection: textDirection,
+    )..layout();
+    painter.paint(
+      canvas,
+      Offset(
+        (size.width - painter.width) / 2.0,
+        (size.height - painter.height) / 2.0 + dy,
+      ),
+    );
+    painter.dispose();
+  }
+
+  @override
+  bool shouldRepaint(BulletinCountdownPainter oldDelegate) {
+    return ringFraction != oldDelegate.ringFraction ||
+        seconds != oldDelegate.seconds ||
+        outSeconds != oldDelegate.outSeconds ||
+        swapProgress != oldDelegate.swapProgress ||
+        color != oldDelegate.color ||
+        textDirection != oldDelegate.textDirection;
   }
 }
