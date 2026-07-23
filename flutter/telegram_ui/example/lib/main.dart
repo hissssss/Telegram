@@ -1,12 +1,16 @@
 // telegram_ui gallery app (ARCHITECTURE.md section 2: example/).
 //
-// Four pages:
+// Five pages:
 //  * tabs demo        — a DialogsActivity-style replica (TgScaffold +
 //                       GlassAppBar + DialogCells + GlassTabBar);
 //  * chat demo        — fake message bubbles over a busy gradient with the
 //                       composed ChatInput and its full record flow;
 //  * glass playground — every LiquidGlassSettings field as a live slider
 //                       over a busy background;
+//  * widgets demo     — the PLAN_UIKIT component catalog (buttons, dialogs,
+//                       menus, form controls, avatars, progress, text
+//                       fields, empty/skeleton, hints, chips, undo
+//                       bulletin, TgPageRoute navigation);
 //  * theme browser    — the five bundled themes with swatches + apply, and a
 //                       cell/bulletin/sheet component demo section.
 
@@ -19,6 +23,7 @@ import 'pages/chat_demo.dart';
 import 'pages/glass_playground.dart';
 import 'pages/tabs_demo.dart';
 import 'pages/theme_browser.dart';
+import 'pages/widgets_demo.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,11 +127,12 @@ class _GalleryHomeState extends State<GalleryHome> {
           TabsDemoPage(),
           ChatDemoPage(),
           GlassPlaygroundPage(),
+          WidgetsDemoPage(),
           ThemeBrowserPage(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        // Four destinations: keep the fixed type so every label stays
+        // Five destinations: keep the fixed type so every label stays
         // visible (the default flips to shifting at 4+ items).
         type: BottomNavigationBarType.fixed,
         currentIndex: _index,
@@ -143,6 +149,10 @@ class _GalleryHomeState extends State<GalleryHome> {
           BottomNavigationBarItem(
             icon: Icon(Icons.blur_on_rounded),
             label: 'Glass',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.widgets_outlined),
+            label: 'Widgets',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.palette_outlined),

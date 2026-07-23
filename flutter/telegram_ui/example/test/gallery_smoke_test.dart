@@ -1,4 +1,4 @@
-// Smoke test for the gallery app: it builds, all four pages mount, and
+// Smoke test for the gallery app: it builds, all five pages mount, and
 // bottom navigation switches between them. Runs under flutter_tester, where
 // the glass probe resolves non-liquid and every surface renders frosted/flat.
 
@@ -10,13 +10,14 @@ import 'package:telegram_ui_example/pages/chat_demo.dart';
 import 'package:telegram_ui_example/pages/glass_playground.dart';
 import 'package:telegram_ui_example/pages/tabs_demo.dart';
 import 'package:telegram_ui_example/pages/theme_browser.dart';
+import 'package:telegram_ui_example/pages/widgets_demo.dart';
 
 void main() {
   setUp(() {
     GlassSettings.instance.debugReset();
   });
 
-  testWidgets('gallery builds and navigates between all four pages',
+  testWidgets('gallery builds and navigates between all five pages',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3.0;
@@ -77,7 +78,65 @@ void main() {
     expect(find.byType(GlassPanel), findsWidgets);
     expect(find.byType(Slider), findsNWidgets(5));
 
-    // Theme browser.
+    // Widgets demo — the PLAN_UIKIT catalog. The page hosts self-ticking
+    // animations (indeterminate TgRadialProgress, TgFlickerLoading sweep),
+    // so fixed pumps replace pumpAndSettle while it is on stage.
+    await tester.tap(find.text('Widgets'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(WidgetsDemoPage), findsOneWidget);
+    // The FAB floats over the list; the buttons section opens it.
+    expect(find.byType(TgFab), findsOneWidget);
+    expect(find.byType(TgButton), findsWidgets);
+    expect(find.byType(TgCheckBox), findsWidgets);
+
+    // The catalog ListView is lazy: scroll each remaining section into view
+    // before asserting its controls exist.
+    final Finder catalogList = find.byType(Scrollable).first;
+    // Manual drag-until-found: scrollUntilVisible needs a single-match
+    // finder and chokes on multi/empty matches, and the list is lazy so the
+    // target widget does not exist until its section scrolls into build
+    // range.
+    Future<void> scrollTo(Finder finder) async {
+      for (int i = 0; i < 40 && finder.evaluate().isEmpty; i++) {
+        await tester.drag(catalogList, const Offset(0, -300));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(finder, findsWidgets);
+    }
+    await scrollTo(find.byType(TgRadioCell));
+    expect(find.byType(TgRadioCell), findsWidgets);
+    await scrollTo(find.byType(TgSlideChooser));
+    expect(find.byType(TgSlider), findsWidgets);
+    await scrollTo(find.byType(TgAvatar));
+    expect(find.byType(TgAvatar), findsWidgets);
+    await scrollTo(find.byType(TgRadialProgress));
+    expect(find.byType(TgRadialProgress), findsWidgets);
+    await scrollTo(find.byType(TgLinearProgress));
+    await scrollTo(find.byType(TgTextField));
+    expect(find.byType(TgTextField), findsWidgets);
+    await scrollTo(find.byType(TgEmptyView));
+    await scrollTo(find.byType(TgFlickerLoading));
+    await scrollTo(find.byType(TgHint));
+    await scrollTo(find.byType(TgChip));
+    expect(find.byType(TgChip), findsWidgets);
+
+    // Push the detail page through TgPageRoute and swipe-free pop via the
+    // Back button (150ms slide+fade each way).
+    await scrollTo(find.text('Push detail page'));
+    await tester.ensureVisible(find.text('Push detail page'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Push detail page'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Detail page'), findsOneWidget);
+    await tester.tap(find.text('Back'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Detail page'), findsNothing);
+
+    // Theme browser (the IndexedStack mutes the widgets page's tickers, so
+    // pumpAndSettle is safe again).
     await tester.tap(find.text('Themes'));
     await tester.pumpAndSettle();
     expect(find.byType(ThemeBrowserPage), findsOneWidget);

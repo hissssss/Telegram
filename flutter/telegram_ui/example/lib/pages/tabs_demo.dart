@@ -12,7 +12,6 @@ import 'package:telegram_ui/telegram_ui.dart';
 import 'package:telegram_ui_lottie/telegram_ui_lottie.dart';
 
 import '../main.dart';
-import '../widgets/gradient_avatar.dart';
 
 class _FakeDialog {
   const _FakeDialog(this.name, this.message, this.time,
@@ -135,7 +134,7 @@ class _TabsDemoPageState extends State<TabsDemoPage>
                 countMuted: dialog.muted,
                 pinned: dialog.pinned && index < _seedDialogs.length,
                 pinnedIcon: Icon(Icons.push_pin, size: 16, color: pinColor),
-                avatar: GradientAvatar(name: dialog.name, seed: index),
+                avatar: TgAvatar(id: index, firstName: dialog.name, size: 52),
               );
             },
           );
@@ -175,7 +174,7 @@ class _TabsDemoPageState extends State<TabsDemoPage>
           GlassTabBarItem(
             id: 'profile',
             label: 'Ariana',
-            avatar: const GradientAvatar(name: 'Ariana', seed: 2),
+            avatar: const TgAvatar(id: 2, firstName: 'Ariana', size: 22),
           ),
         ],
       ),

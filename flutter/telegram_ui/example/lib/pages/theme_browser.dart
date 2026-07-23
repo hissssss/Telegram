@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:telegram_ui/telegram_ui.dart';
 
 import '../main.dart';
-import '../widgets/gradient_avatar.dart';
 
 /// The theme browser page.
 class ThemeBrowserPage extends StatefulWidget {
@@ -123,13 +122,13 @@ class _ThemeBrowserPageState extends State<ThemeBrowserPage> {
                     name: 'Ariana',
                     status: 'online',
                     online: true,
-                    avatar: GradientAvatar(name: 'Ariana', seed: 2),
+                    avatar: TgAvatar(id: 2, firstName: 'Ariana', size: 46),
                     divider: true,
                   ),
                   const UserCell(
                     name: 'Marco Rossi',
                     status: 'last seen recently',
-                    avatar: GradientAvatar(name: 'Marco', seed: 5),
+                    avatar: TgAvatar(id: 5, firstName: 'Marco', size: 46),
                   ),
                 ],
               ),
