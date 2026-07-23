@@ -44,6 +44,7 @@ import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../foundation/tg_curves.dart';
@@ -550,23 +551,15 @@ class _HintChrome extends SingleChildRenderObjectWidget {
 
 class _RenderHintChrome extends RenderShiftedBox {
   _RenderHintChrome({
-    required TgHintDirection direction,
-    required double joint,
-    required double jointTranslate,
-    required double rounding,
-    required double arrowHalfWidth,
-    required double arrowHeight,
-    required Color backgroundColor,
-    required double showFactor,
-  })  : _direction = direction,
-        _joint = joint,
-        _jointTranslate = jointTranslate,
-        _rounding = rounding,
-        _arrowHalfWidth = arrowHalfWidth,
-        _arrowHeight = arrowHeight,
-        _backgroundColor = backgroundColor,
-        _showFactor = showFactor,
-        super(null);
+    required this._direction,
+    required this._joint,
+    required this._jointTranslate,
+    required this._rounding,
+    required this._arrowHalfWidth,
+    required this._arrowHeight,
+    required this._backgroundColor,
+    required this._showFactor,
+  }) : super(null);
 
   TgHintDirection get direction => _direction;
   TgHintDirection _direction;
@@ -744,7 +737,7 @@ class _RenderHintChrome extends RenderShiftedBox {
       if (hi <= lo) {
         return (start + end) / 2.0;
       }
-      return raw.clamp(lo, hi);
+      return clampDouble(raw, lo, hi);
     }
 
     final bool horizontal =
@@ -870,11 +863,12 @@ class _RenderHintChrome extends RenderShiftedBox {
     // scale = lerp(.75f, 1f, showT) around (arrowX, arrowY)
     // (HintView2.java:864-867); alpha = showT (:862).
     final double scale = lerpDouble(kTgHintHiddenScale, 1.0, t)!;
-    final Matrix4 transform = Matrix4.identity()
-      ..translate(geometry.arrowTip.dx, geometry.arrowTip.dy)
-      ..scale(scale, scale)
-      ..translate(-geometry.arrowTip.dx, -geometry.arrowTip.dy);
-    context.pushOpacity(offset, (t * 255.0).round().clamp(0, 255),
+    final Matrix4 transform = Matrix4.translationValues(
+        geometry.arrowTip.dx, geometry.arrowTip.dy, 0.0)
+      ..multiply(Matrix4.diagonal3Values(scale, scale, 1.0))
+      ..multiply(Matrix4.translationValues(
+          -geometry.arrowTip.dx, -geometry.arrowTip.dy, 0.0));
+    context.pushOpacity(offset, (t * 255.0).round(),
         (PaintingContext opacityContext, Offset opacityOffset) {
       opacityContext.pushTransform(
         needsCompositing,

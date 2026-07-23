@@ -49,7 +49,6 @@ library;
 
 import 'dart:ui' as ui show Gradient, TileMode;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/widgets.dart';
 

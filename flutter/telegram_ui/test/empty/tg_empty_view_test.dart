@@ -195,7 +195,9 @@ void main() {
             .first,
       );
       // scale = lerp(0.5, 1, 0.5) = 0.75.
-      expect(transform.transform.getMaxScaleOnAxis(),
+      expect(transform.transform.entry(0, 0),
+          moreOrLessEquals(0.75, epsilon: 0.001));
+      expect(transform.transform.entry(1, 1),
           moreOrLessEquals(0.75, epsilon: 0.001));
     });
 
